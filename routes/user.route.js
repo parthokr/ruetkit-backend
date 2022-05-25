@@ -78,6 +78,7 @@ userRoute.post('/signin', async (req, res, next) => {
             where: { ruet_id },
             select: {
                 id: true,
+                fullname: true,
                 password: true,
                 status: true,
                 role: true
@@ -90,9 +91,9 @@ userRoute.post('/signin', async (req, res, next) => {
             return next(new RuetkitError(403, {detail: 'This user is not verified yet'}))
         }
         if (await bcrypt.compare(password, user.password)) {
-            const accessToken = await generateAccessToken({ id: user.id, role: user.role })
-            const refreshToken = await generateRefreshToken({ id: user.id, role: user.role })
-            res.status(200).send({ accessToken, refreshToken })
+            const accessToken = await generateAccessToken({ id: user.id, fullname: user.fullname, role: user.role })
+            const refreshToken = await generateRefreshToken({ id: user.id, fullname: user.fullname,role: user.role })
+            res.status(200).send({ accessToken, refreshToken, fullname: user.fullname })
         } else {
             return next(new RuetkitError(401, {detail: 'Invalid credentials provided'}))
         }
@@ -126,8 +127,8 @@ userRoute.post('/:id/verify', async (req, res, next) => {
                     status: 'verified'
                 }
             }).then(async user => {
-                const accessToken = await generateAccessToken({ id: user.id, role: user.role })
-                const refreshToken = await generateRefreshToken({ id: user.id, role: user.role })
+                const accessToken = await generateAccessToken({ id: user.id, fullname: user.fullname, role: user.role })
+                const refreshToken = await generateRefreshToken({ id: user.id, fullname: user.fullname, role: user.role })
                 res.status(200).send({ accessToken, refreshToken })
             })
         }
@@ -175,22 +176,6 @@ userRoute.get('/:id/verify', async (req, res, next) => {
 
 })
 
-userRoute.post('/refresh', async (req, res, next) => {
-    const { refreshToken } = req.body
-    // console.log(refreshToken)
-    if (refreshToken === null || refreshToken === undefined || refreshToken === '') {
-        return next(new RuetkitError(400, { field: 'refreshToken', detail: 'Refresh token is required' }))
-    }
-
-    try {
-        const user = jwt.verify(refreshToken, process.env.JWT_PRIVATE_KEY)
-        const accessToken = await generateAccessToken({ id: user.id, role: user.role })
-        res.status(200).send({ accessToken })
-    } catch (e) {
-        return next(new RuetkitError())
-    }
-})
-
 userRoute.get('/', [auth, requireStaff], async (req, res, next) => {
     const users = await prisma.user.findMany({
         select: {
@@ -204,5 +189,30 @@ userRoute.get('/', [auth, requireStaff], async (req, res, next) => {
 
     res.send(users)
 })
+
+// verify existing access token
+userRoute.post('/token', [auth], async (req, res, next) => {
+    res.status(200).send({fullname: req.user.fullname})
+})
+
+// refresh access token using refreshToken
+userRoute.post('/token/refresh', async (req, res, next) => {
+    const { refreshToken } = req.body
+    // console.log(refreshToken)
+    if (refreshToken === null || refreshToken === undefined || refreshToken === '') {
+        return next(new RuetkitError(400, { field: 'refreshToken', detail: 'Refresh token is required' }))
+    }
+
+    try {
+        const user = jwt.verify(refreshToken, process.env.JWT_PRIVATE_KEY)
+        const accessToken = await generateAccessToken({ id: user.id, role: user.role })
+        res.status(200).send({ accessToken })
+    } catch (e) {
+        console.log(e)
+        res.sendStatus(401)
+        // return next(new RuetkitError())
+    }
+})
+
 
 module.exports = userRoute
