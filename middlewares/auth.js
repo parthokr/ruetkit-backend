@@ -10,7 +10,7 @@ class RuetkitError extends Error {
 
 const auth = async (req, res, next) => {
     const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1] // Bearer <token
+    const token = authHeader && authHeader.split(' ')[1] // Bearer <token>
     if (token === null || token === undefined || token === '') {
         return next(new RuetkitError(400, {error: "Access token is missing"}))
     }
