@@ -25,7 +25,6 @@ const auth = async (req, res, next) => {
                 }
             }
         )
-        // console.log(user)
         if (!user.is_verified) {return next(new RuetkitError(403, {detail: 'This account is not verified'}))}
         if (user.status === 'RESTRICTED') {return next(new RuetkitError(403, {detail: 'This account has been restricted, contact staff'}))}
         req.user = user
