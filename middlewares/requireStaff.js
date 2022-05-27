@@ -7,7 +7,7 @@ class RuetkitError extends Error {
 }
 
 const requireStaff = async (req, res, next) => {
-    if (req.user.role === 'staff') return next()
+    if (req.user.role === 'STAFF') return next()
     return next(new RuetkitError(403, {detail: 'You are not allowed to perform this action'}))
 }
 

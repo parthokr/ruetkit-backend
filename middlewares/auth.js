@@ -1,12 +1,9 @@
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
-class RuetkitError extends Error {
-    constructor(code=500, message='Something went wrong') {
-        super(code)
-        this.code = code
-        this.message = message
-    }
-}
+const RuetkitError = require('../errors/ruetkit')
+
+const { PrismaClient } = require('@prisma/client')
+const prisma = new PrismaClient()
 
 const auth = async (req, res, next) => {
     const authHeader = req.headers['authorization']
@@ -15,11 +12,28 @@ const auth = async (req, res, next) => {
         return next(new RuetkitError(400, {error: "Access token is missing"}))
     }
     try {
-        const user = jwt.verify(token, process.env.JWT_PRIVATE_KEY)
+        const userId = jwt.verify(token, process.env.JWT_PRIVATE_KEY).id
+        const user = await prisma.user.findUnique(
+            {
+                where: {id: userId},
+                select: {
+                    id: true,
+                    fullname: true,
+                    is_verified: true,
+                    status: true,
+                    role: true
+                }
+            }
+        )
+        // console.log(user)
+        if (!user.is_verified) {return next(new RuetkitError(403, {detail: 'This account is not verified'}))}
+        if (user.status === 'RESTRICTED') {return next(new RuetkitError(403, {detail: 'This account has been restricted, contact staff'}))}
         req.user = user
     } catch (e) {
         console.log(e);
         return next(new RuetkitError(401, {detail: 'Invalid token provided'}))
+    } finally {
+        prisma.$disconnect()
     }
     next()
 }
