@@ -7,8 +7,7 @@ app.use(cors({
 }))
 app.use(express.json())
 app.use((err, req, res, next) => {
-    // This check makes sure this is a JSON parsing issue, but it might be
-    // coming from any middleware, not just body-parser:
+    // This check makes sure this is a JSON parsing issue
 
     if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
         console.error(err);
