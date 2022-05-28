@@ -20,6 +20,7 @@ model User {
   status Status @default(UNRESTRICTED)
   role Role @default(USER)
   code Code?
+  material Material[]
 }
 
 model Code {
@@ -28,6 +29,26 @@ model Code {
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
   user_id Int
 }
+
+model Material {
+  id Int @id @default(autoincrement())
+  title String @unique
+  description String
+  department Department @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  user User @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user_id Int
+  department_id Int
+}
+
+
+model Department {
+  id Int @id @default(autoincrement())
+  acronym String @unique
+  description String @unique
+
+  material Material[]
+}
+
 
 enum Role {
   USER
