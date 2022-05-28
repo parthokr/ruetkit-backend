@@ -95,7 +95,7 @@ exports.signIn = async (req, res, next) => {
             }
             const accessToken = await generateAccessToken({ id: user.id, fullname: user.fullname, role: user.role })
             const refreshToken = await generateRefreshToken({ id: user.id, fullname: user.fullname,role: user.role })
-            res.status(200).send({ accessToken, refreshToken, fullname: user.fullname })
+            res.status(200).send({ accessToken, refreshToken, fullname: user.fullname, role: user.role })
         } else {
             return next(new RuetkitError(401, {field: 'password', detail: 'Invalid credentials provided'}))
         }
@@ -141,7 +141,7 @@ exports.verify = async (req, res, next) => {
                 }).then(async _code => {
                     const accessToken = await generateAccessToken({ id: user.id, fullname: user.fullname, role: user.role })
                     const refreshToken = await generateRefreshToken({ id: user.id, fullname: user.fullname, role: user.role })
-                    res.status(200).send({ accessToken, refreshToken, fullname: user.fullname })
+                    res.status(200).send({ accessToken, refreshToken, fullname: user.fullname, role: user.role })
                 })
             })
         }
@@ -196,7 +196,7 @@ exports.resendVerification = async (req, res, next) => {
 }
 
 exports.verifyToken = async (req, res, next) => {
-    res.status(200).send({fullname: req.user.fullname})
+    res.status(200).send({fullname: req.user.fullname, role: req.user.role})
 }
 
 exports.refreshToken = async (req, res, next) => {
@@ -209,7 +209,7 @@ exports.refreshToken = async (req, res, next) => {
     try {
         const user = jwt.verify(refreshToken, process.env.JWT_PRIVATE_KEY)
         const accessToken = await generateAccessToken({ id: user.id, role: user.role })
-        res.status(200).send({ accessToken })
+        res.status(200).send({ accessToken, fullname: user.fullname, role: user.role })
     } catch (e) {
         console.log(e)
         res.sendStatus(401)
@@ -372,7 +372,7 @@ exports.resetPassword = async (req, res, next) => {
                 }).then(async _code => {
                     const accessToken = await generateAccessToken({ id: user.id, fullname: user.fullname, role: user.role })
                     const refreshToken = await generateRefreshToken({ id: user.id, fullname: user.fullname, role: user.role })
-                    res.status(200).send({ accessToken, refreshToken, fullname: user.fullname })
+                    res.status(200).send({ accessToken, refreshToken, fullname: user.fullname, role: user.role })
                 })
             })
         }
