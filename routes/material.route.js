@@ -2,8 +2,10 @@ const express = require('express')
 const auth = require('../middlewares/auth')
 const materialRoute = express.Router()
 
-materialRoute.get('/', [auth], async (req, res, next) => {
-    res.send('Protected route')
-})
+const materialController = require('../controllers/materialController')
+
+materialRoute.get('/', [auth], materialController.listMaterials)
+
+materialRoute.post('/', [auth], materialController.createMaterialMeta)
 
 module.exports = materialRoute
