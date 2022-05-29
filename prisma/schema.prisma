@@ -39,6 +39,8 @@ model Material {
   user User @relation(fields: [user_id], references: [id], onDelete: SetNull)
   user_id Int
   department_id Int
+
+  @@unique([id, user_id])
 }
 
 
