@@ -12,7 +12,8 @@ exports.getMaterial = async (req, res, next) => {
     try {
         const material = await prisma.material.findUnique({
             where: {
-                id: materialId
+                id: materialId,
+                is_approved: true
             },
             select: {
                 id: true,
@@ -21,8 +22,8 @@ exports.getMaterial = async (req, res, next) => {
                 user: {
                     select: { id: true, fullname: true }
                 },
-                department: {
-                    select: { id: true, acronym: true, description: true }
+                course: {
+                    select: { id: true, code: true, title: true, department: { select: { id: true, acronym: true, description: true } } }
                 }
             }
         })
@@ -30,8 +31,8 @@ exports.getMaterial = async (req, res, next) => {
         if (material === null) return next(new RuetkitError(404, { detail: 'The material you requested was not found' }))
 
         // rename user key as uploaded_by
-        const {user: uploaded_by, ...rest} = material
-        res.status(200).send({...rest, uploaded_by})
+        const { user: uploaded_by, ...rest } = material
+        res.status(200).send({ ...rest, uploaded_by })
 
     } catch (err) {
         console.log(err)
@@ -44,7 +45,7 @@ exports.listMaterials = async (req, res, next) => {
     // console.log(req.query)
     // if (req.query !== undefined) return _listFilteredMaterials(req, res, next)
 
-    const {query, dept, sem, uploaded_by: uploadedBy, page, exact} = req.query
+    const { query, dept, year, sem, cc: courseCode, uploaded_by: uploadedBy, page, exact } = req.query
 
     let containsOrSearch = exact === 'true' ? 'search' : 'contains'
     let defaultOrInsensitive = exact === 'true' ? 'default' : 'insensitive'
@@ -60,11 +61,13 @@ exports.listMaterials = async (req, res, next) => {
                 user: {
                     select: { id: true, fullname: true }
                 },
-                department: {
-                    select: { acronym: true, description: true }
+                course: {
+                    select: { id: true, code: true, title: true, semester: true, year: true, department: { select: { id: true, acronym: true, description: true } } }
                 }
             },
             where: {
+                is_approved: true,
+
                 ...(query !== undefined && {
                     OR: [
                         {
@@ -80,26 +83,84 @@ exports.listMaterials = async (req, res, next) => {
                             }
                         },
                         {
-                            department: {
-                                acronym: {[containsOrSearch]: query, mode: 'insensitive'},
+                            course: {
+                                code: {
+                                    [containsOrSearch]: query,
+                                    mode: 'insensitive'
+                                }
                             }
                         },
                         {
-                            department: {
-                                description: {[containsOrSearch]: query, mode: 'insensitive'},
+                            course: {
+                                title: {
+                                    [containsOrSearch]: query,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        },
+                        {
+                            course: {
+                                department: {
+                                    acronym: { [containsOrSearch]: query, mode: 'insensitive' },
+                                }
+                            }
+                        },
+                        {
+                            course: {
+                                department: {
+                                    description: { [containsOrSearch]: query, mode: 'insensitive' },
+                                }
                             }
                         }
                     ],
                 }),
                 ...(uploadedBy !== undefined && {
                     user: {
-                        ...(isNaN(uploadedBy) && {fullname: {[containsOrSearch]: uploadedBy, mode: 'insensitive'}}),
-                        ...(!isNaN(uploadedBy) && {ruet_id: Number(uploadedBy)})
+                        ...(isNaN(uploadedBy) && { fullname: { [containsOrSearch]: uploadedBy, mode: 'insensitive' } }),
+                        ...(!isNaN(uploadedBy) && { ruet_id: Number(uploadedBy) })
                     }
                 }),
                 ...(dept !== undefined && {
-                    department: {
-                        acronym: {contains: dept, mode: 'insensitive'}
+                    course: {
+                        department: {
+                            acronym: {
+                                contains: dept,
+                                mode: 'insensitive'
+                            }
+                        },
+                        ...(courseCode !== undefined && {
+                            code: {
+                                contains: courseCode,
+                                mode: 'insensitive'
+                            }
+                        })
+                    }
+                }),
+                ...(courseCode !== undefined && {
+                    course: {
+                        code: {
+                            contains: courseCode,
+                            mode: 'insensitive'
+                        },
+                        ...(dept !== undefined && {
+                            department: {
+                                acronym: {
+                                    contains: dept,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        })
+                    }
+                }),
+
+                ...(year !== undefined && {
+                    course: {
+                        year: Number(year)
+                    }
+                }),
+                ...(sem !== undefined && {
+                    course: {
+                        semester: sem === '1' ? 'ODD' : 'EVEN'
                     }
                 })
                 // user: userQuery
@@ -108,8 +169,8 @@ exports.listMaterials = async (req, res, next) => {
 
         // rename user key as uploaded_by
         materials.map((material, index) => {
-            const {user: uploaded_by, ...rest} = material
-            materials[index] = {...rest, uploaded_by}
+            const { user: uploaded_by, ...rest } = material
+            materials[index] = { ...rest, uploaded_by }
         })
 
         res.status(materials.length === 0 ? 404 : 200).send(materials)
@@ -122,7 +183,7 @@ exports.listMaterials = async (req, res, next) => {
 
 exports.createMaterialMeta = async (req, res, next) => {
     // console.log(req.user)
-    const { title, description, department_id: departmentId } = req.body
+    const { title, description, course_id: courseId } = req.body
     console.log(title)
     try {
         const material = await prisma.material.create({
@@ -132,8 +193,8 @@ exports.createMaterialMeta = async (req, res, next) => {
                 user: {
                     connect: { id: req.user.id }
                 },
-                department: {
-                    connect: { id: Number(departmentId) }
+                course: {
+                    connect: { id: Number(courseId) }
                 }
             }
         })
@@ -152,7 +213,7 @@ exports.createMaterialMeta = async (req, res, next) => {
 }
 
 exports.deleteMaterial = async (req, res, next) => {
-    const {materialId} = req.params
+    const { materialId } = req.params
 
     // TODO chheck if materialId is not number
 
@@ -171,10 +232,38 @@ exports.deleteMaterial = async (req, res, next) => {
         console.log(err)
         if (err.code === 'P2025') {
             // if user is not the owner or the material is already deleted
-            return next(new RuetkitError(403, {detail: 'You are not allowed to perform this request'}))
+            return next(new RuetkitError(403, { detail: 'You are not allowed to perform this request' }))
         }
         return next(new RuetkitError())
     } finally {
         prisma.$disconnect()
     }
+}
+
+exports.approveMaterial = async (req, res, next) => {
+    const {materialId} = req.params
+
+    // TODO chheck if materialId is not number
+
+    try {
+        const material = await prisma.material.update({
+            data: {
+                is_approved: true
+            },
+            where: {
+                id: Number(materialId)
+            }
+        })
+        res.sendStatus(200)
+        console.log(material)
+    } catch (err) {
+        console.log(err)
+        if (err.code === 'P2025') {
+            // if material doesn't exist
+            return next(new RuetkitError(404, { detail: 'Material was not found' }))
+        }
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }    
 }
