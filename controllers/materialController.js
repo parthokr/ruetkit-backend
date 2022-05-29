@@ -12,7 +12,8 @@ exports.getMaterial = async (req, res, next) => {
     try {
         const material = await prisma.material.findUnique({
             where: {
-                id: materialId
+                id: materialId,
+                is_approved: true
             },
             select: {
                 id: true,
@@ -21,15 +22,17 @@ exports.getMaterial = async (req, res, next) => {
                 user: {
                     select: { id: true, fullname: true }
                 },
-                department: {
-                    select: { id: true, acronym: true, description: true }
+                course: {
+                    select: { id: true, code: true, title: true, department: { select: { id: true, acronym: true, description: true } } }
                 }
             }
         })
 
         if (material === null) return next(new RuetkitError(404, { detail: 'The material you requested was not found' }))
 
-        res.status(200).send(material)
+        // rename user key as uploaded_by
+        const { user: uploaded_by, ...rest } = material
+        res.status(200).send({ ...rest, uploaded_by })
 
     } catch (err) {
         console.log(err)
@@ -42,24 +45,13 @@ exports.listMaterials = async (req, res, next) => {
     // console.log(req.query)
     // if (req.query !== undefined) return _listFilteredMaterials(req, res, next)
 
-    const {query, uploaded_by: uploadedBy, page, exact} = req.query
-
-    let userQuery = {ruet_id: Number(uploadedBy) || undefined}
-    if (isNaN(Number(uploadedBy))) {
-        userQuery = {
-            fullname: {
-                contains: uploadedBy || undefined,
-                mode: 'insensitive'
-            }
-        }
-    }
+    const { query, dept, year, sem, cc: courseCode, uploaded_by: uploadedBy, page, exact } = req.query
 
     let containsOrSearch = exact === 'true' ? 'search' : 'contains'
     let defaultOrInsensitive = exact === 'true' ? 'default' : 'insensitive'
 
-    console.log(userQuery);
 
-    console.log(query, uploadedBy)
+    // console.log(query, uploadedBy)
     try {
         const materials = await prisma.material.findMany({
             select: {
@@ -69,45 +61,119 @@ exports.listMaterials = async (req, res, next) => {
                 user: {
                     select: { id: true, fullname: true }
                 },
-                department: {
-                    select: { acronym: true, description: true }
+                course: {
+                    select: { id: true, code: true, title: true, semester: true, year: true, department: { select: { id: true, acronym: true, description: true } } }
                 }
             },
             where: {
-                OR: [
-                    {
-                        title: {
-                            [containsOrSearch]: query || undefined,
-                            mode: defaultOrInsensitive
+                is_approved: true,
+
+                ...(query !== undefined && {
+                    OR: [
+                        {
+                            title: {
+                                [containsOrSearch]: query,
+                                mode: 'insensitive'
+                            }
+                        },
+                        {
+                            description: {
+                                [containsOrSearch]: query,
+                                mode: 'insensitive'
+                            }
+                        },
+                        {
+                            course: {
+                                code: {
+                                    [containsOrSearch]: query,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        },
+                        {
+                            course: {
+                                title: {
+                                    [containsOrSearch]: query,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        },
+                        {
+                            course: {
+                                department: {
+                                    acronym: { [containsOrSearch]: query, mode: 'insensitive' },
+                                }
+                            }
+                        },
+                        {
+                            course: {
+                                department: {
+                                    description: { [containsOrSearch]: query, mode: 'insensitive' },
+                                }
+                            }
                         }
-                    },
-                    {
-                        description: {
-                            [containsOrSearch]: query || undefined,
-                            mode: defaultOrInsensitive
-                        }
-                    },
-                    {
+                    ],
+                }),
+                ...(uploadedBy !== undefined && {
+                    user: {
+                        ...(isNaN(uploadedBy) && { fullname: { [containsOrSearch]: uploadedBy, mode: 'insensitive' } }),
+                        ...(!isNaN(uploadedBy) && { ruet_id: Number(uploadedBy) })
+                    }
+                }),
+                ...(dept !== undefined && {
+                    course: {
                         department: {
                             acronym: {
-                                [containsOrSearch]: query || undefined,
-                                mode: defaultOrInsensitive
+                                contains: dept,
+                                mode: 'insensitive'
                             }
-                        }
-                    },
-                    {
-                        department: {
-                            description: {
-                                [containsOrSearch]: query || undefined,
-                                mode: defaultOrInsensitive
+                        },
+                        ...(courseCode !== undefined && {
+                            code: {
+                                contains: courseCode,
+                                mode: 'insensitive'
                             }
-                        }
-                    },
-                ],
-                user: userQuery
+                        })
+                    }
+                }),
+                ...(courseCode !== undefined && {
+                    course: {
+                        code: {
+                            contains: courseCode,
+                            mode: 'insensitive'
+                        },
+                        ...(dept !== undefined && {
+                            department: {
+                                acronym: {
+                                    contains: dept,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        })
+                    }
+                }),
+
+                ...(year !== undefined && {
+                    course: {
+                        year: Number(year)
+                    }
+                }),
+                ...(sem !== undefined && {
+                    course: {
+                        semester: sem === '1' ? 'ODD' : 'EVEN'
+                    }
+                })
+                // user: userQuery
             }
         })
-        res.send(materials)
+
+        // rename user key as uploaded_by
+        materials.map((material, index) => {
+            const { user: uploaded_by, ...rest } = material
+            materials[index] = { ...rest, uploaded_by }
+        })
+
+        res.status(materials.length === 0 ? 404 : 200).send(materials)
     } catch (err) {
         console.log(err)
     } finally {
@@ -117,7 +183,7 @@ exports.listMaterials = async (req, res, next) => {
 
 exports.createMaterialMeta = async (req, res, next) => {
     // console.log(req.user)
-    const { title, description, department_id: departmentId } = req.body
+    const { title, description, course_id: courseId } = req.body
     console.log(title)
     try {
         const material = await prisma.material.create({
@@ -127,12 +193,11 @@ exports.createMaterialMeta = async (req, res, next) => {
                 user: {
                     connect: { id: req.user.id }
                 },
-                department: {
-                    connect: { id: Number(departmentId) }
+                course: {
+                    connect: { id: Number(courseId) }
                 }
             }
         })
-
         res.send(material)
     } catch (err) {
         console.log(err)
@@ -145,4 +210,60 @@ exports.createMaterialMeta = async (req, res, next) => {
         prisma.$disconnect()
     }
 
+}
+
+exports.deleteMaterial = async (req, res, next) => {
+    const { materialId } = req.params
+
+    // TODO chheck if materialId is not number
+
+    try {
+        const material = await prisma.material.delete({
+            where: {
+                id_user_id: {
+                    id: Number(materialId),
+                    user_id: req.user.id
+                }
+            }
+        })
+        res.sendStatus(204)
+        // console.log(material)
+    } catch (err) {
+        console.log(err)
+        if (err.code === 'P2025') {
+            // if user is not the owner or the material is already deleted
+            return next(new RuetkitError(403, { detail: 'You are not allowed to perform this request' }))
+        }
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }
+}
+
+exports.approveMaterial = async (req, res, next) => {
+    const {materialId} = req.params
+
+    // TODO chheck if materialId is not number
+
+    try {
+        const material = await prisma.material.update({
+            data: {
+                is_approved: true
+            },
+            where: {
+                id: Number(materialId)
+            }
+        })
+        res.sendStatus(200)
+        console.log(material)
+    } catch (err) {
+        console.log(err)
+        if (err.code === 'P2025') {
+            // if material doesn't exist
+            return next(new RuetkitError(404, { detail: 'Material was not found' }))
+        }
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }    
 }
