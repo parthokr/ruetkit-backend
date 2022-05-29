@@ -35,21 +35,33 @@ model Material {
   id Int @id @default(autoincrement())
   title String @unique
   description String
-  department Department @relation(fields: [department_id], references: [id], onDelete: SetNull)
-  user User @relation(fields: [user_id], references: [id], onDelete: SetNull)
   user_id Int
-  department_id Int
+  course_id Int
+  is_approved Boolean @default(false)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  course Course @relation(fields: [course_id], references: [id], onDelete: SetNull)
 
   @@unique([id, user_id])
 }
 
+model Course {
+  id Int @id @default(autoincrement())
+  code String @unique
+  title String
+  year Int 
+  semester Semester
+  department_id Int
+  material Material[]
+
+  department Department @relation(fields: [department_id], references: [id], onDelete: SetNull)
+}
 
 model Department {
   id Int @id @default(autoincrement())
   acronym String @unique
   description String @unique
-
-  material Material[]
+  course Course[]
 }
 
 
@@ -61,4 +73,9 @@ enum Role {
 enum Status {
   RESTRICTED
   UNRESTRICTED
+}
+
+enum Semester {
+  ODD
+  EVEN
 }
