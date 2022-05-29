@@ -29,7 +29,9 @@ exports.getMaterial = async (req, res, next) => {
 
         if (material === null) return next(new RuetkitError(404, { detail: 'The material you requested was not found' }))
 
-        res.status(200).send(material)
+        // rename user key as uploaded_by
+        const {user: uploaded_by, ...rest} = material
+        res.status(200).send({...rest, uploaded_by})
 
     } catch (err) {
         console.log(err)
@@ -42,24 +44,13 @@ exports.listMaterials = async (req, res, next) => {
     // console.log(req.query)
     // if (req.query !== undefined) return _listFilteredMaterials(req, res, next)
 
-    const {query, uploaded_by: uploadedBy, page, exact} = req.query
-
-    let userQuery = {ruet_id: Number(uploadedBy) || undefined}
-    if (isNaN(Number(uploadedBy))) {
-        userQuery = {
-            fullname: {
-                contains: uploadedBy || undefined,
-                mode: 'insensitive'
-            }
-        }
-    }
+    const {query, dept, sem, uploaded_by: uploadedBy, page, exact} = req.query
 
     let containsOrSearch = exact === 'true' ? 'search' : 'contains'
     let defaultOrInsensitive = exact === 'true' ? 'default' : 'insensitive'
 
-    console.log(userQuery);
 
-    console.log(query, uploadedBy)
+    // console.log(query, uploadedBy)
     try {
         const materials = await prisma.material.findMany({
             select: {
@@ -74,40 +65,54 @@ exports.listMaterials = async (req, res, next) => {
                 }
             },
             where: {
-                OR: [
-                    {
-                        title: {
-                            [containsOrSearch]: query || undefined,
-                            mode: defaultOrInsensitive
-                        }
-                    },
-                    {
-                        description: {
-                            [containsOrSearch]: query || undefined,
-                            mode: defaultOrInsensitive
-                        }
-                    },
-                    {
-                        department: {
-                            acronym: {
-                                [containsOrSearch]: query || undefined,
-                                mode: defaultOrInsensitive
+                ...(query !== undefined && {
+                    OR: [
+                        {
+                            title: {
+                                [containsOrSearch]: query,
+                                mode: 'insensitive'
                             }
-                        }
-                    },
-                    {
-                        department: {
+                        },
+                        {
                             description: {
-                                [containsOrSearch]: query || undefined,
-                                mode: defaultOrInsensitive
+                                [containsOrSearch]: query,
+                                mode: 'insensitive'
+                            }
+                        },
+                        {
+                            department: {
+                                acronym: {[containsOrSearch]: query, mode: 'insensitive'},
+                            }
+                        },
+                        {
+                            department: {
+                                description: {[containsOrSearch]: query, mode: 'insensitive'},
                             }
                         }
-                    },
-                ],
-                user: userQuery
+                    ],
+                }),
+                ...(uploadedBy !== undefined && {
+                    user: {
+                        ...(isNaN(uploadedBy) && {fullname: {[containsOrSearch]: uploadedBy, mode: 'insensitive'}}),
+                        ...(!isNaN(uploadedBy) && {ruet_id: Number(uploadedBy)})
+                    }
+                }),
+                ...(dept !== undefined && {
+                    department: {
+                        acronym: {contains: dept, mode: 'insensitive'}
+                    }
+                })
+                // user: userQuery
             }
         })
-        res.send(materials)
+
+        // rename user key as uploaded_by
+        materials.map((material, index) => {
+            const {user: uploaded_by, ...rest} = material
+            materials[index] = {...rest, uploaded_by}
+        })
+
+        res.status(materials.length === 0 ? 404 : 200).send(materials)
     } catch (err) {
         console.log(err)
     } finally {
@@ -132,7 +137,6 @@ exports.createMaterialMeta = async (req, res, next) => {
                 }
             }
         })
-
         res.send(material)
     } catch (err) {
         console.log(err)
@@ -145,4 +149,32 @@ exports.createMaterialMeta = async (req, res, next) => {
         prisma.$disconnect()
     }
 
+}
+
+exports.deleteMaterial = async (req, res, next) => {
+    const {materialId} = req.params
+
+    // TODO chheck if materialId is not number
+
+    try {
+        const material = await prisma.material.delete({
+            where: {
+                id_user_id: {
+                    id: Number(materialId),
+                    user_id: req.user.id
+                }
+            }
+        })
+        res.sendStatus(204)
+        // console.log(material)
+    } catch (err) {
+        console.log(err)
+        if (err.code === 'P2025') {
+            // if user is not the owner or the material is already deleted
+            return next(new RuetkitError(403, {detail: 'You are not allowed to perform this request'}))
+        }
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }
 }
