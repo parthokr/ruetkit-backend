@@ -4,7 +4,7 @@ const userRoute = express.Router()
 
 // import all middlewares
 const auth = require('../middlewares/auth')
-const requireStaff = require('../middlewares/requireStaff')
+const requireStaffOrAdmin = require('../middlewares/requireStaffOrAdmin')
 
 const userController = require('../controllers/userController')
 
@@ -20,7 +20,7 @@ userRoute.post('/:id/verify', userController.verify)
 userRoute.patch('/:id/verify', userController.resendVerification)
 
 // list users (experimental endpoint)
-userRoute.get('/', [auth, requireStaff], userController.listUsers)
+userRoute.get('/', [auth, requireStaffOrAdmin], userController.listUsers)
 
 // verify existing access token
 userRoute.post('/token', [auth], userController.verifyToken)

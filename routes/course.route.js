@@ -1,11 +1,11 @@
 const express = require('express')
 const auth = require('../middlewares/auth')
-const requireStaff = require('../middlewares/requireStaff')
+const requireStaffOrAdmin = require('../middlewares/requireStaffOrAdmin')
 const courseRoute = express.Router()
 
 const courseController = require('../controllers/courseController')
 
-courseRoute.get('/', [auth, requireStaff], courseController.listCourse)
-courseRoute.post('/', [auth, requireStaff], courseController.createCourse)
+courseRoute.get('/', [auth, requireStaffOrAdmin], courseController.listCourse)
+courseRoute.post('/', [auth, requireStaffOrAdmin], courseController.createCourse)
 
 module.exports = courseRoute
