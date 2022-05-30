@@ -21,7 +21,9 @@ model User {
   status Status @default(UNRESTRICTED)
   role Role @default(USER)
   code Code?
-  material Material[]
+  
+  material Material[] @relation(name: "uploader")
+  approved_material Material[] @relation(name: "approver")
 }
 
 model Code {
@@ -35,15 +37,17 @@ model Material {
   id Int @id @default(autoincrement())
   title String @unique
   description String
-  user_id Int
+  uploader_id Int
   course_id Int
-  is_approved Boolean @default(false)
+  approver_id Int?
 
-  user User @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  uploader User @relation(name: "uploader", fields: [uploader_id], references: [id], onDelete: SetNull)
   course Course @relation(fields: [course_id], references: [id], onDelete: SetNull)
+  approver User? @relation(name: "approver", fields: [approver_id], references: [id], onDelete: SetNull)
 
-  @@unique([id, user_id])
+  @@unique([id, uploader_id])
 }
+
 
 model Course {
   id Int @id @default(autoincrement())
