@@ -12,26 +12,33 @@ exports.getMaterial = async (req, res, next) => {
     try {
         const material = await prisma.material.findUnique({
             where: {
-                id: materialId,
-                is_approved: true
+                id: Number(materialId)
             },
             select: {
                 id: true,
                 title: true,
                 description: true,
-                user: {
+                uploader: {
                     select: { id: true, fullname: true }
                 },
                 course: {
                     select: { id: true, code: true, title: true, department: { select: { id: true, acronym: true, description: true } } }
+                },
+                approver: {
+                    select: {
+                        id: true,
+                        fullname: true
+                    }
                 }
             }
         })
-
-        if (material === null) return next(new RuetkitError(404, { detail: 'The material you requested was not found' }))
+        // console.log(material)
+        // return 403 if material is not approved and user is not owner
+        if (material === null || (material.approver === null && material.uploader.id !== req.user.id))
+            return next(new RuetkitError(404, { detail: 'The material you requested was not found' }))
 
         // rename user key as uploaded_by
-        const { user: uploaded_by, ...rest } = material
+        const { uploader: uploaded_by, ...rest } = material
         res.status(200).send({ ...rest, uploaded_by })
 
     } catch (err) {
@@ -58,15 +65,32 @@ exports.listMaterials = async (req, res, next) => {
                 id: true,
                 title: true,
                 description: true,
-                user: {
+                uploader: {
                     select: { id: true, fullname: true }
                 },
                 course: {
                     select: { id: true, code: true, title: true, semester: true, year: true, department: { select: { id: true, acronym: true, description: true } } }
+                },
+                approver: {
+                    select: {
+                        id: true,
+                        fullname: true
+                    }
                 }
             },
             where: {
-                is_approved: true,
+                OR: [
+                    {
+                        NOT: {
+                            approver_id: null
+                        }
+                    },
+                    {
+                        uploader: {
+                            id: req.user.id
+                        }
+                    }
+                ],
 
                 ...(query !== undefined && {
                     OR: [
@@ -115,7 +139,7 @@ exports.listMaterials = async (req, res, next) => {
                     ],
                 }),
                 ...(uploadedBy !== undefined && {
-                    user: {
+                    uploader: {
                         ...(isNaN(uploadedBy) && { fullname: { [containsOrSearch]: uploadedBy, mode: 'insensitive' } }),
                         ...(!isNaN(uploadedBy) && { ruet_id: Number(uploadedBy) })
                     }
@@ -169,7 +193,7 @@ exports.listMaterials = async (req, res, next) => {
 
         // rename user key as uploaded_by
         materials.map((material, index) => {
-            const { user: uploaded_by, ...rest } = material
+            const { uploader: uploaded_by, ...rest } = material
             materials[index] = { ...rest, uploaded_by }
         })
 
@@ -190,7 +214,7 @@ exports.createMaterialMeta = async (req, res, next) => {
             data: {
                 title,
                 description,
-                user: {
+                uploader: {
                     connect: { id: req.user.id }
                 },
                 course: {
@@ -220,9 +244,9 @@ exports.deleteMaterial = async (req, res, next) => {
     try {
         const material = await prisma.material.delete({
             where: {
-                id_user_id: {
+                id_uploader_id: {
                     id: Number(materialId),
-                    user_id: req.user.id
+                    uploader_id: req.user.id
                 }
             }
         })
@@ -241,14 +265,16 @@ exports.deleteMaterial = async (req, res, next) => {
 }
 
 exports.approveMaterial = async (req, res, next) => {
-    const {materialId} = req.params
+    const { materialId } = req.params
 
     // TODO chheck if materialId is not number
 
     try {
         const material = await prisma.material.update({
             data: {
-                is_approved: true
+                approver: {
+                    connect: {id: req.user.id}
+                }
             },
             where: {
                 id: Number(materialId)
@@ -265,5 +291,5 @@ exports.approveMaterial = async (req, res, next) => {
         return next(new RuetkitError())
     } finally {
         prisma.$disconnect()
-    }    
+    }
 }
