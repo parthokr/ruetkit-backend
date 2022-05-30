@@ -6,9 +6,10 @@ class RuetkitError extends Error {
     }
 }
 
-const requireStaff = async (req, res, next) => {
-    if (req.user.role === 'STAFF') return next()
+const requireStaffOrAdmin = async (req, res, next) => {
+    const allowedRole = ['STAFF', 'ADMIN']
+    if (allowedRole.includes(req.user.role)) return next()
     return next(new RuetkitError(403, {detail: 'You are not allowed to perform this action'}))
 }
 
-module.exports = requireStaff
+module.exports = requireStaffOrAdmin
