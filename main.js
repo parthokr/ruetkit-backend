@@ -3,7 +3,7 @@ const cors = require('cors')
 const app = express()
 
 app.use(cors({
-    origin: ['http://localhost:3000', 'https://parthokr.github.io']
+    origin: ['http://localhost:3000', 'https://parthokr.github.io', 'https://ruetkit.github.io']
 }))
 app.use(express.json())
 app.use((err, req, res, next) => {
