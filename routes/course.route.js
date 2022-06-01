@@ -5,7 +5,7 @@ const courseRoute = express.Router()
 
 const courseController = require('../controllers/courseController')
 
-courseRoute.get('/', [auth, requireStaffOrAdmin], courseController.listCourse)
+courseRoute.get('/', [auth], courseController.listCourse)
 courseRoute.post('/', [auth, requireStaffOrAdmin], courseController.createCourse)
 
 module.exports = courseRoute
