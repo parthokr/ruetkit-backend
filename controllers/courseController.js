@@ -64,7 +64,9 @@ exports.createCourse = async (req, res, next) => {
 
 }
 
+// List all courses (staff purpose)
 exports.listCourse = async (req, res, next) => {
+    const {dept: departmentId} = req.query
     try {
         const course = await prisma.course.findMany({
             select: {
