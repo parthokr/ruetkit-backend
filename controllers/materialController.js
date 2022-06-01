@@ -32,9 +32,11 @@ exports.getMaterial = async (req, res, next) => {
                 }
             }
         })
-        // console.log(material)
-        // return 403 if material is not approved and user is not owner
-        if (material === null || (material.approver === null && material.uploader.id !== req.user.id))
+
+        // return 403 if material doesn't exist or
+        //                                         material is not approved and user is not owner
+        console.log(req.user.role)
+        if (material === null || (material.approver === null && material.uploader.id !== req.user.id && req.user.role === 'USER'))
             return next(new RuetkitError(404, { detail: 'The material you requested was not found' }))
 
         // rename user key as uploaded_by
@@ -51,14 +53,40 @@ exports.getMaterial = async (req, res, next) => {
 exports.listMaterials = async (req, res, next) => {
     // console.log(req.query)
     // if (req.query !== undefined) return _listFilteredMaterials(req, res, next)
+    const { query, dept, year, sem, cc: courseCode, uploaded_by: uploadedBy, page, exact, self } = req.query
 
-    const { query, dept, year, sem, cc: courseCode, uploaded_by: uploadedBy, page, exact } = req.query
+    // check if self is true
+    // then return materials belong to signed in user regardless approval status
 
+    if (self === 'true') {
+        try {
+            const material = await prisma.material.findMany({
+                where: {
+                    uploader: {
+                        id: req.user.id
+                    }
+                },
+                select: {
+                    id: true,
+                    title: true,
+                    approver: {
+                        select: { id: true }
+                    }
+                }
+            })
+
+            if (material === null) return next(new RuetkitError(404, { detail: 'No upload yet' }))
+
+            res.status(200).send(material)
+        } catch (err) {
+            console.log(err)
+        } finally {
+            prisma.$disconnect()
+        }
+    }
+
+    // if self is false
     let containsOrSearch = exact === 'true' ? 'search' : 'contains'
-    let defaultOrInsensitive = exact === 'true' ? 'default' : 'insensitive'
-
-
-    // console.log(query, uploadedBy)
     try {
         const materials = await prisma.material.findMany({
             select: {
@@ -79,19 +107,12 @@ exports.listMaterials = async (req, res, next) => {
                 }
             },
             where: {
-                OR: [
-                    {
-                        NOT: {
-                            approver_id: null
-                        }
-                    },
-                    {
-                        uploader: {
-                            id: req.user.id
-                        }
-                    }
-                ],
+                // only select the approved ones
 
+                NOT: {
+                    approver_id: null
+                },
+                // set up queries
                 ...(query !== undefined && {
                     OR: [
                         {
@@ -187,7 +208,6 @@ exports.listMaterials = async (req, res, next) => {
                         semester: sem === '1' ? 'ODD' : 'EVEN'
                     }
                 })
-                // user: userQuery
             }
         })
 
@@ -273,7 +293,7 @@ exports.approveMaterial = async (req, res, next) => {
         const material = await prisma.material.update({
             data: {
                 approver: {
-                    connect: {id: req.user.id}
+                    connect: { id: req.user.id }
                 }
             },
             where: {
