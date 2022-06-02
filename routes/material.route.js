@@ -15,6 +15,8 @@ materialRoute.get('/:materialId', [auth], materialController.getMaterial)
 
 materialRoute.post('/', [auth], materialController.createMaterialMeta)
 
+materialRoute.post('/check', [auth], materialController.checkMaterialTitle)
+
 materialRoute.delete('/:materialId', [auth], materialController.deleteMaterial)
 
 materialRoute.patch('/:materialId/approve', [auth, requireStaffOrAdmin], materialController.approveMaterial)
