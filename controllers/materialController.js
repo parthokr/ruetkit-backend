@@ -242,7 +242,6 @@ exports.createMaterialMeta = async (req, res, next) => {
     if (courseId === null || courseId === undefined || courseId === '') {
         return next(new RuetkitError(400, {field: 'course_id', detail: 'course_id is required'}))
     }
-
     try {
         const material = await prisma.material.create({
             data: {
