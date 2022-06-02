@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client')
 const RuetkitError = require('../errors/ruetkit')
 const prisma = new PrismaClient()
+const {uploadMaterial : _uploadMaterial} = require('../services/uploadMaterial')
 
 exports.getMaterial = async (req, res, next) => {
     let { materialId } = req.params
@@ -227,8 +228,21 @@ exports.listMaterials = async (req, res, next) => {
 
 exports.createMaterialMeta = async (req, res, next) => {
     // console.log(req.user)
-    const { title, description, course_id: courseId } = req.body
-    console.log(title)
+    let { title, description, course_id: courseId, material_link_id: materialLinkId } = req.body
+
+    if (title === null || title === undefined || title === '') {
+        return next(new RuetkitError(400, {field: 'title', detail: 'Title is required'}))
+    }
+
+    // description is optional, leave it
+    if (description === null || description === undefined || description === '') {
+        description = ""
+    }
+
+    if (courseId === null || courseId === undefined || courseId === '') {
+        return next(new RuetkitError(400, {field: 'course_id', detail: 'course_id is required'}))
+    }
+
     try {
         const material = await prisma.material.create({
             data: {
@@ -239,7 +253,8 @@ exports.createMaterialMeta = async (req, res, next) => {
                 },
                 course: {
                     connect: { id: Number(courseId) }
-                }
+                },
+                material_link: {connect: {id: materialLinkId}}
             }
         })
         res.send(material)
@@ -248,7 +263,7 @@ exports.createMaterialMeta = async (req, res, next) => {
         if (err.code === 'P2002') {
             return next(new RuetkitError(403, { field: err.meta.target[0], detail: `${err.meta.target[0]} has been used already` }))
         } else if (err.code === 'P2025') {
-            return next(new RuetkitError(400, { field: 'department_id', detail: 'Invalid department_id provided' }))
+            return next(new RuetkitError(400, { field: 'course_id', detail: 'Invalid course_id provided' }))
         }
     } finally {
         prisma.$disconnect()
@@ -312,4 +327,26 @@ exports.approveMaterial = async (req, res, next) => {
     } finally {
         prisma.$disconnect()
     }
+}
+
+
+exports.uploadMaterial = async (req, res, next) => {
+    const {title} = req.body
+    try {
+        req.files[0].originalname = `[RuetKit] ${title} [${req.user.fullname}]`
+        const uploadRes = await _uploadMaterial(req.files[0])
+
+        const createDriveFileID = await prisma.material_Link.create({
+            data: {
+                drive_file_id: uploadRes.id,
+                uploader: {
+                    connect: {id: req.user.id}
+                }
+            }
+        })
+        res.status(200).send({id: createDriveFileID.id});
+      } catch (f) {
+          console.log(f)
+        res.send(f.message);
+      }
 }

@@ -2,73 +2,85 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
-  id      Int      @id @default(autoincrement())
-  ruet_id Int @unique
+  id          Int     @id @default(autoincrement())
+  ruet_id     Int     @unique
   fullname    String  @db.VarChar(25)
-  email   String   @unique
-  password String
+  email       String  @unique
+  password    String
   is_verified Boolean @default(false)
-  status Status @default(UNRESTRICTED)
-  role Role @default(USER)
-  code Code?
-  
-  material Material[] @relation(name: "uploader")
-  approved_material Material[] @relation(name: "approver")
+  status      Status  @default(UNRESTRICTED)
+  role        Role    @default(USER)
+  code        Code?
+
+  material          Material[]      @relation(name: "uploader")
+  approved_material Material[]      @relation(name: "approver")
+  drive_file_id     Material_Link[]
 }
 
 model Code {
-  id Int @id @default(autoincrement())
-  code String
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  user_id Int
+  id      Int    @id @default(autoincrement())
+  code    String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id Int    @unique
 }
 
 model Material {
-  id Int @id @default(autoincrement())
-  title String @unique
+  id          Int    @id @default(autoincrement())
+  title       String @unique
   description String
   uploader_id Int
-  course_id Int
+  course_id   Int
   approver_id Int?
+  material_link_id Int
 
-  uploader User @relation(name: "uploader", fields: [uploader_id], references: [id], onDelete: SetNull)
-  course Course @relation(fields: [course_id], references: [id], onDelete: SetNull)
-  approver User? @relation(name: "approver", fields: [approver_id], references: [id], onDelete: SetNull)
+
+  uploader User   @relation(name: "uploader", fields: [uploader_id], references: [id], onDelete: SetNull)
+  course   Course @relation(fields: [course_id], references: [id], onDelete: SetNull)
+  approver User?  @relation(name: "approver", fields: [approver_id], references: [id], onDelete: SetNull)
+  material_link Material_Link @relation(fields: [material_link_id], references: [id], onDelete: Cascade)
+
 
   @@unique([id, uploader_id])
 }
 
+model Material_Link {
+  id            Int    @id @default(autoincrement())
+  drive_file_id String @unique
+  uploader_id   Int
+
+  uploader User @relation(fields: [uploader_id], references: [id], onDelete: SetNull)
+  material Material?
+}
 
 model Course {
-  id Int @id @default(autoincrement())
-  code String @unique
-  title String
-  year Int 
-  semester Semester
+  id            Int        @id @default(autoincrement())
+  code          String     @unique
+  title         String
+  year          Int
+  semester      Semester
   department_id Int
-  material Material[]
+  material      Material[]
 
   department Department @relation(fields: [department_id], references: [id], onDelete: SetNull)
 }
 
 model Department {
-  id Int @id @default(autoincrement())
-  acronym String @unique
-  description String @unique
-  course Course[]
+  id          Int      @id @default(autoincrement())
+  acronym     String   @unique
+  description String   @unique
+  course      Course[]
 }
-
 
 enum Role {
   USER

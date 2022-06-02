@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "intense-acrobat-352108",
+  "private_key_id": "5f89fb2b6550e591b02c92670e025305c66fb6ec",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCeWfTUSf16d0m5\nx8hdxHUnr7D2YJSWcoEqykjEQkJM0dwWIWeI3h6a5EXH/zsBMpZHH5yZdJ54w6JS\nXwRh3cOXAxps0x01Rd/EyaTf0Rl/l4dsRZ/9wq9vPJAy4SfDz6aB/QIB59WAdyAt\nghJTIFGoN+xC/03epvSF1MEufSpcUGHE8DexmgNqvUYsEXzZbYzqqpoP3Nq8wzuc\nNZvQRm0o7FXkDAGGfy4KI1uxSYau297oT2x5qlwkuBbc6OAQjNbhibpQm20RAW7i\nmpprPGSzLmX4gbQRi+qk8X+B7Tc0R496KhDE35pMjhT4hGAp9QkFuQ8XgkJf9JxJ\nks6NxSWtAgMBAAECggEAA187TnFnxI/+BBAK5mMgKdMvO6kF/Gx0pkOeen5GJJYQ\nmLnCzjl272CXnGNgj0iu6tWqfr4PbdcyXPpkt6OnJ09eCR3JwwKCnqO65hLxG6IG\nRvD2VIIIYXuXY6TVx4M/MprbFV+XLClK9frWq6EPRTufDn2at1PGiPFTBYKNrjr1\nquCv2gtdvde1kEV5GQP2xFEJEi9f2BoZNUAnigblxHDigkpQ9UKCizgmFKlw/yJP\nwEJcxUQ/gMFsJ+Gy4nQZP7ld3MrBlUYUdDBQocCC5QJsfz8VHQ2R7Lb+FziEwUZX\nYVDcHSUtW5ts22NejPI/Toe6qFrUB3RXGWAN7hR6ZQKBgQDTychejsNTyR0OYAOS\ndlOlj5evo9CbEAnUunCaX2DPvz3GG8IoBg5PLd/F1Jo5b976RSgn/WcCrpZLUnbl\njygMJHq/5XICSKI5qfSCY6D/KCRopISPg89n32F0sYRXJtGL2Pgie8gHjdhicBpf\nF/JbIRY+/sGwSBRo3wxOSPk6EwKBgQC/aHIPFvrjgX54Np/xUg5wg/bbeIS8TG4c\nBx/RyukqBWEU5kypEspfIgAaoHlUN0eFVB+cLyMovrwHoFPBFnqfiD8kDlVzr+Ea\n93dS9AgVJ4gF4Qz7wNep5X73QIJZ60w6QIgsIRNXKti6OBRS7iwkYc/02O6ET0+a\nYG8zb6wZPwKBgGkd7eWA1lHvsAxCe4NmV34FFzSGCjPscfSz1M/KJzL1qKN7g5J5\n7wA9tKNsMl/vtqxhRt0SWN5r6QzZkUm/FBFyyboVF9EqW9pjEIjnCjGaqveFMIZK\n1daoeKaCtTzMd5UBy6bR6SZWsN+q5GvuZsv0UCZUK65jGD409takQY8hAoGARJNv\nCej5yjjCzt8DPrpfYgBlmQv8wlm/uVr0E33XO67hsVMxdAG/b4YG84M69Ok5PpN9\nH7/joN11EGZom20qUa3GsWxRQTlqNPckURwNKUcYfMK8nBXjLoOCkaMTEJQ0o0or\nf2P6Qeif7VfaMDwUpJRGpTpzegPQSUbzkEIaLpECgYAZGlBFbPqjrJTsW7Cti8rH\nxdRIaepHjq7M0RzIZCWnoHjC43qt/Tl3ymxmr7xXUIDX6nDoGskLtE/Bjcp4Nxvn\nwlWmCxh9lqcF0eQcC245DQY4i+2Dh22r0gOvKUNVQTC7cqhSdA+AevCgB0Phr5wK\nbpS3FxnZHqXaSyjCvpmxqw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "ruetkit-uploader@intense-acrobat-352108.iam.gserviceaccount.com",
+  "client_id": "109507024505596327013",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/ruetkit-uploader%40intense-acrobat-352108.iam.gserviceaccount.com"
+}
