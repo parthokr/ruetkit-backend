@@ -242,6 +242,11 @@ exports.createMaterialMeta = async (req, res, next) => {
     if (courseId === null || courseId === undefined || courseId === '') {
         return next(new RuetkitError(400, {field: 'course_id', detail: 'course_id is required'}))
     }
+
+    if (materialLinkId === null || materialLinkId === undefined || materialLinkId === '') {
+        return next(new RuetkitError(400, {field: 'material_link_id', detail: 'material_link_id is required'}))
+    }
+
     try {
         const material = await prisma.material.create({
             data: {
@@ -260,10 +265,12 @@ exports.createMaterialMeta = async (req, res, next) => {
     } catch (err) {
         console.log(err)
         if (err.code === 'P2002') {
-            return next(new RuetkitError(403, { field: err.meta.target[0], detail: `${err.meta.target[0]} has been used already` }))
+            return next(new RuetkitError(403, { field: err.meta.target[0], detail: `${err.meta.target[0]} is not available` }))
         } else if (err.code === 'P2025') {
-            return next(new RuetkitError(400, { field: 'course_id', detail: 'Invalid course_id provided' }))
+            // return next(new RuetkitError(400, { field: 'course_id', detail: 'Invalid course_id provided' }))
+            return next(new RuetkitError(400, {detail: 'Bad request body'}))
         }
+        return next(new RuetkitError())
     } finally {
         prisma.$disconnect()
     }
@@ -347,5 +354,35 @@ exports.uploadMaterial = async (req, res, next) => {
       } catch (f) {
           console.log(f)
         res.send(f.message);
+      } finally {
+          prisma.$disconnect()
       }
+}
+
+exports.checkMaterialTitle = async (req, res, next) => {
+    let {title} = req.body
+    title = title.trim().toLowerCase()
+    if (title === null || title === undefined || title === '') {
+        return next(new RuetkitError(400, {field: 'title', detail: 'Title is required'}))
+    }
+    try {
+        const searchTitle = await prisma.material.findMany({
+            where: {
+                title: {
+                    contains: title,
+                    mode: 'insensitive'
+                }
+            },
+            take: 1
+        })
+        if (searchTitle[0]?.title.toLocaleLowerCase() === title) { // equivalent to searchTitle[0] && searchTitle[0].title.toLowerCase() === title
+            return res.sendStatus(403)
+        } 
+        res.sendStatus(200)
+    } catch (err) {
+        console.log(err);
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }
 }
