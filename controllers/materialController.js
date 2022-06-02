@@ -217,7 +217,7 @@ exports.listMaterials = async (req, res, next) => {
             materials[index] = { ...rest, uploaded_by }
         })
 
-        res.status(materials.length === 0 ? 404 : 200).send(materials)
+        res.status(200).send(materials)
     } catch (err) {
         console.log(err)
     } finally {
