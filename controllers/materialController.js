@@ -59,6 +59,7 @@ exports.listMaterials = async (req, res, next) => {
     // check if self is true
     // then return materials belong to signed in user regardless approval status
 
+    // WARNING this block is for owner's lookup
     if (self === 'true') {
         try {
             const material = await prisma.material.findMany({
@@ -94,11 +95,14 @@ exports.listMaterials = async (req, res, next) => {
                 id: true,
                 title: true,
                 description: true,
-                uploader: {
-                    select: { id: true, fullname: true }
-                },
                 course: {
                     select: { id: true, code: true, title: true, semester: true, year: true, department: { select: { id: true, acronym: true, description: true } } }
+                },
+                material_link: {
+                    select: {drive_file_id: true}
+                },
+                uploader: {
+                    select: { id: true, fullname: true }
                 },
                 approver: {
                     select: {
