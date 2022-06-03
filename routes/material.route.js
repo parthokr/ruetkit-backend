@@ -23,4 +23,8 @@ materialRoute.patch('/:materialId/approve', [auth, requireStaffOrAdmin], materia
 
 materialRoute.post('/upload', [auth, upload.any()], materialController.uploadMaterial)
 
+materialRoute.post('/thumbnails/upload', [auth, upload.any()], materialController.uploadThumbnail)
+
+
+
 module.exports = materialRoute
