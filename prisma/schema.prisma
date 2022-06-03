@@ -25,7 +25,8 @@ model User {
 
   material          Material[]      @relation(name: "uploader")
   approved_material Material[]      @relation(name: "approver")
-  drive_file_id     Material_Link[]
+  material_drive_file_id     Material_Link[]
+  thumbnail_link Thumnail_Link[]
 }
 
 model Code {
@@ -43,15 +44,25 @@ model Material {
   course_id   Int
   approver_id Int?
   material_link_id Int
+  thumbnail_link_id Int
 
 
   uploader User   @relation(name: "uploader", fields: [uploader_id], references: [id], onDelete: SetNull)
   course   Course @relation(fields: [course_id], references: [id], onDelete: SetNull)
   approver User?  @relation(name: "approver", fields: [approver_id], references: [id], onDelete: SetNull)
   material_link Material_Link @relation(fields: [material_link_id], references: [id], onDelete: Cascade)
-
+  thumbnail_link Thumnail_Link @relation(fields: [thumbnail_link_id], references: [id], onDelete: Cascade)
 
   @@unique([id, uploader_id])
+}
+
+model Thumnail_Link {
+  id Int @id @default(autoincrement())
+  url String @unique
+  uploader_id Int
+
+  uploader User @relation(fields: [uploader_id], references: [id], onDelete: SetNull)
+  material Material?
 }
 
 model Material_Link {
