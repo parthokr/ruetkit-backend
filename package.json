@@ -20,10 +20,14 @@
     "express": "^4.18.1",
     "googleapis": "^100.0.0",
     "jsonwebtoken": "^8.5.1",
+    "mailgun-js": "^0.22.0",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.7.5",
+    "nodemailer-mailgun-transport": "^2.1.4",
     "nodemon": "^2.0.16",
     "pg": "^8.7.3",
-    "pg-hstore": "^2.3.4"
+    "pg-hstore": "^2.3.4",
+    "uuidv4": "^6.2.13"
   },
   "engines": {
     "node": "16.x"
