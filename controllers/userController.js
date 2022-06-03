@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken')
 const { generateAccessToken, generateRefreshToken } = require('../services/generateToken')
 
 const { PrismaClient } = require('@prisma/client')
+const { sendMail } = require('../services/sendMail')
 const prisma = new PrismaClient()
 
 
@@ -29,6 +30,7 @@ exports.signUp = async (req, res, next) => {
         if (isNaN(Number(ruet_id))) {
             return next(new RuetkitError(400, {field: 'ruet_id', detail: 'Ruet ID is supposed to be an integer'}))
         }
+        const verificationCode = Math.random().toString(36).slice(2, 8).toUpperCase()
         const user = await prisma.user.create({
             data: {
                 ruet_id: Number(ruet_id),
@@ -37,11 +39,17 @@ exports.signUp = async (req, res, next) => {
                 password: await bcrypt.hash(password, 10),
                 code: {
                     create: {
-                        code: Math.random().toString(36).slice(2, 8).toUpperCase()
+                        code: verificationCode
                     }
                 }
             }
         })
+        sendMail({
+            to: user.email, 
+            subject: 'Verify your RuetKit account', 
+            text: `Greetings <strong>${fullname}</strong></br>Your RuetKit verification code is <font size='12px'><code>${verificationCode}</code></font>`
+        })
+
         res.send({ id: user.id })
     } catch (e) {
         console.log(e)
