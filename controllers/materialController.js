@@ -2,6 +2,8 @@ const { PrismaClient } = require('@prisma/client')
 const RuetkitError = require('../errors/ruetkit')
 const prisma = new PrismaClient()
 const {uploadMaterial : _uploadMaterial} = require('../services/uploadMaterial')
+const {uploadThumbnail: _uploadThumbnail} = require('../services/uploadThumbnail')
+const {v4: uuidv4} = require('uuid')
 
 exports.getMaterial = async (req, res, next) => {
     let { materialId } = req.params
@@ -100,6 +102,9 @@ exports.listMaterials = async (req, res, next) => {
                 },
                 material_link: {
                     select: {drive_file_id: true}
+                },
+                thumbnail_link: {
+                    select: {url: true}
                 },
                 uploader: {
                     select: { id: true, fullname: true }
@@ -232,7 +237,13 @@ exports.listMaterials = async (req, res, next) => {
 
 exports.createMaterialMeta = async (req, res, next) => {
     // console.log(req.user)
-    let { title, description, course_id: courseId, material_link_id: materialLinkId } = req.body
+    let { title, 
+        description, 
+        course_id: courseId, 
+        material_link_id: materialLinkId,
+        // thumbnail_link_id: thumbnailLinkId,
+        thumbnail_link: thumbnailLink
+    } = req.body
 
     if (title === null || title === undefined || title === '') {
         return next(new RuetkitError(400, {field: 'title', detail: 'Title is required'}))
@@ -251,6 +262,10 @@ exports.createMaterialMeta = async (req, res, next) => {
         return next(new RuetkitError(400, {field: 'material_link_id', detail: 'material_link_id is required'}))
     }
 
+    // if (thumbnailLinkId === null || thumbnailLinkId === undefined || thumbnailLinkId === '') {
+    //     return next(new RuetkitError(400, {field: 'thumbnail_link_id', detail: 'thumbnail_link_id is required'}))
+    // }
+
     try {
         const material = await prisma.material.create({
             data: {
@@ -262,7 +277,10 @@ exports.createMaterialMeta = async (req, res, next) => {
                 course: {
                     connect: { id: Number(courseId) }
                 },
-                material_link: {connect: {id: materialLinkId}}
+                material_link: {connect: {id: materialLinkId}},
+                thumbnail_link: {
+                    create: {url: thumbnailLink, uploader: {connect: {id: req.user.id}}}
+                }
             }
         })
         res.send(material)
@@ -272,6 +290,8 @@ exports.createMaterialMeta = async (req, res, next) => {
             return next(new RuetkitError(403, { field: err.meta.target[0], detail: `${err.meta.target[0]} is not available` }))
         } else if (err.code === 'P2025') {
             // return next(new RuetkitError(400, { field: 'course_id', detail: 'Invalid course_id provided' }))
+
+            // may be course_id or material_link_id or thumbnail_link_id is invalid
             return next(new RuetkitError(400, {detail: 'Bad request body'}))
         }
         return next(new RuetkitError())
@@ -343,7 +363,7 @@ exports.approveMaterial = async (req, res, next) => {
 exports.uploadMaterial = async (req, res, next) => {
     const {title} = req.body
     try {
-        req.files[0].originalname = `[RuetKit] ${title} [${req.user.fullname}]`
+        req.files[0].originalname = `[RuetKit]_${uuidv4()}_${title}`
         const uploadRes = await _uploadMaterial(req.files[0])
 
         const createDriveFileID = await prisma.material_Link.create({
@@ -389,4 +409,27 @@ exports.checkMaterialTitle = async (req, res, next) => {
     } finally {
         prisma.$disconnect()
     }
+}
+
+
+exports.uploadThumbnail = async (req, res, next) => {
+    try {
+        req.files[0].originalname = `${uuidv4()}`
+        const uploadRes = await _uploadThumbnail(req.files[0])
+
+        const createDriveFileID = await prisma.thumnail_Link.create({
+            data: {
+                drive_file_id: uploadRes.id,
+                uploader: {
+                    connect: {id: req.user.id}
+                }
+            }
+        })
+        res.status(200).send({id: createDriveFileID.id});
+      } catch (f) {
+          console.log(f)
+        res.send(f.message);
+      } finally {
+          prisma.$disconnect()
+      }
 }
