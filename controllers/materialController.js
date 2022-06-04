@@ -302,6 +302,9 @@ exports.createMaterialMeta = async (req, res, next) => {
                 material_link: {connect: {id: materialLinkId}},
                 thumbnail_link: {
                     create: {url: thumbnailLink, uploader: {connect: {id: req.user.id}}}
+                },
+                liked_by: {
+                    set: [req.user.id]
                 }
             }
         })
