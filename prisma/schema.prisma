@@ -45,6 +45,7 @@ model Material {
   approver_id Int?
   material_link_id Int
   thumbnail_link_id Int
+  liked_by Int[]
 
 
   uploader User   @relation(name: "uploader", fields: [uploader_id], references: [id], onDelete: SetNull)

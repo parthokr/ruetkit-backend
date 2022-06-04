@@ -25,6 +25,7 @@ materialRoute.post('/upload', [auth, upload.any()], materialController.uploadMat
 
 materialRoute.post('/thumbnails/upload', [auth, upload.any()], materialController.uploadThumbnail)
 
+materialRoute.patch('/:materialId/like/toggle', [auth], materialController.toggleLike)
 
 
 module.exports = materialRoute
