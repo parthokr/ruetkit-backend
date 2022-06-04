@@ -114,7 +114,8 @@ exports.listMaterials = async (req, res, next) => {
                         id: true,
                         fullname: true
                     }
-                }
+                },
+                liked_by: true
             },
             where: {
                 // only select the approved ones
@@ -218,6 +219,9 @@ exports.listMaterials = async (req, res, next) => {
                         semester: sem === '1' ? 'ODD' : 'EVEN'
                     }
                 })
+            },
+            orderBy: {
+                liked_by: 'desc'
             }
         })
 
@@ -226,6 +230,24 @@ exports.listMaterials = async (req, res, next) => {
             const { uploader: uploaded_by, ...rest } = material
             materials[index] = { ...rest, uploaded_by }
         })
+
+        // determine if current signed in user has liked this material
+
+        materials.map((material, index) => {
+            material['liked'] = false
+            if (material.liked_by.includes(req.user.id)) {
+                material['liked'] = true
+            }
+        })
+
+        // count liked by
+
+        materials.map((material, index) => {
+            material['liked_by'] = material.liked_by.length
+        })
+
+        // delete liked_by
+        delete materials['liked_by']
 
         res.status(200).send(materials)
     } catch (err) {
@@ -432,4 +454,49 @@ exports.uploadThumbnail = async (req, res, next) => {
       } finally {
           prisma.$disconnect()
       }
+}
+
+exports.toggleLike = async (req, res, next) => {
+    const {materialId} = req.params
+
+    try {
+        const material = await prisma.material.findFirst({
+            where: {
+                id: Number(materialId)
+            }
+        })
+        // handle if user alreaady liked this material
+        if (material.liked_by.includes(req.user.id)) {
+            // unlike this material
+
+            const liked_by = material.liked_by
+            delete liked_by[liked_by.indexOf(req.user.id)]
+            await prisma.material.update({
+                where: {
+                    id: Number(materialId)
+                },
+                data: {
+                    liked_by: {
+                        set: liked_by
+                    }
+                }
+            })
+            res.status(200).send({unliked: true})
+        } else {
+            await prisma.material.update({
+                where: {
+                    id: Number(materialId)
+                },
+                data: {
+                    liked_by: {
+                        push: req.user.id
+                    }
+                }
+            })
+            res.status(200).send({liked: true})
+        }
+    } catch(err) {
+        console.log(err)
+        return next(new RuetkitError())
+    }
 }
