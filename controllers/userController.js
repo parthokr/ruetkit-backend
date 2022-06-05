@@ -44,11 +44,11 @@ exports.signUp = async (req, res, next) => {
                 }
             }
         })
-        sendMail({
-            to: user.email, 
-            subject: 'Verify your RuetKit account', 
-            text: `Greetings <strong>${fullname}</strong></br>Your RuetKit verification code is <font size='12px'><code>${verificationCode}</code></font>`
-        })
+        // sendMail({
+        //     to: user.email, 
+        //     subject: 'Verify your RuetKit account', 
+        //     text: `Greetings <strong>${fullname}</strong></br>Your RuetKit verification code is <font size='12px'><code>${verificationCode}</code></font>`
+        // })
 
         res.send({ id: user.id })
     } catch (e) {

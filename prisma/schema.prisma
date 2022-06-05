@@ -41,11 +41,13 @@ model Material {
   title       String @unique
   description String
   uploader_id Int
+  is_uploaded_anonymously Boolean @default(false)
   course_id   Int
   approver_id Int?
   material_link_id Int
   thumbnail_link_id Int
   liked_by Int[]
+  like_count Int @default(0)
 
 
   uploader User   @relation(name: "uploader", fields: [uploader_id], references: [id], onDelete: SetNull)
@@ -63,7 +65,7 @@ model Thumnail_Link {
   uploader_id Int
 
   uploader User @relation(fields: [uploader_id], references: [id], onDelete: SetNull)
-  material Material?
+  material Material[]
 }
 
 model Material_Link {
