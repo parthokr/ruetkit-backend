@@ -284,8 +284,113 @@ exports.listMaterials = async (req, res, next) => {
             return material
         })
 
+        const found = await prisma.material.count({
+            where: {
+                // only select the approved ones
 
-        res.status(200).send(materials)
+                NOT: {
+                    approver_id: null
+                },
+                // set up queries
+                ...(query !== undefined && {
+                    OR: [
+                        {
+                            title: {
+                                [containsOrSearch]: query,
+                                mode: 'insensitive'
+                            }
+                        },
+                        {
+                            description: {
+                                [containsOrSearch]: query,
+                                mode: 'insensitive'
+                            }
+                        },
+                        {
+                            course: {
+                                code: {
+                                    [containsOrSearch]: query,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        },
+                        {
+                            course: {
+                                title: {
+                                    [containsOrSearch]: query,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        },
+                        {
+                            course: {
+                                department: {
+                                    acronym: { [containsOrSearch]: query, mode: 'insensitive' },
+                                }
+                            }
+                        },
+                        {
+                            course: {
+                                department: {
+                                    description: { [containsOrSearch]: query, mode: 'insensitive' },
+                                }
+                            }
+                        }
+                    ],
+                }),
+                ...(uploadedBy !== undefined && {
+                    uploader: {
+                        ...(isNaN(uploadedBy) && { fullname: { [containsOrSearch]: uploadedBy, mode: 'insensitive' } }),
+                        ...(!isNaN(uploadedBy) && { ruet_id: Number(uploadedBy) })
+                    }
+                }),
+                ...(dept !== undefined && {
+                    course: {
+                        department: {
+                            acronym: {
+                                contains: dept,
+                                mode: 'insensitive'
+                            }
+                        },
+                        ...(courseCode !== undefined && {
+                            code: {
+                                contains: courseCode,
+                                mode: 'insensitive'
+                            }
+                        })
+                    }
+                }),
+                ...(courseCode !== undefined && {
+                    course: {
+                        code: {
+                            contains: courseCode,
+                            mode: 'insensitive'
+                        },
+                        ...(dept !== undefined && {
+                            department: {
+                                acronym: {
+                                    contains: dept,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        })
+                    }
+                }),
+
+                ...(year !== undefined && {
+                    course: {
+                        year: Number(year)
+                    }
+                }),
+                ...(sem !== undefined && {
+                    course: {
+                        semester: sem === '1' ? 'ODD' : 'EVEN'
+                    }
+                })
+            }
+        })
+
+        res.status(200).send({materials, found})
     } catch (err) {
         console.log(err)
     } finally {
