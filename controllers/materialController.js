@@ -14,7 +14,7 @@ exports.getMaterial = async (req, res, next) => {
     // TODO check if materialId is not number
 
     try {
-        const material = await prisma.material.findUnique({
+        let material = await prisma.material.findUnique({
             where: {
                 id: Number(materialId)
             },
@@ -33,7 +33,17 @@ exports.getMaterial = async (req, res, next) => {
                         id: true,
                         fullname: true
                     }
-                }
+                },
+                material_link: {
+                    select: { drive_file_id: true }
+                },
+                thumbnail_link: {
+                    select: { url: true }
+                },
+                uploader: {
+                    select: { id: true, fullname: true, role: true }
+                },
+                liked_by: true
             }
         })
 
@@ -46,9 +56,15 @@ exports.getMaterial = async (req, res, next) => {
         if (material.approver.id === Number(process.env.SYSTEM_ID)) {
             material.approver.fullname = 'System'
         }
+    
+
+        material.liked = material.liked_by.includes(req.user.id)
+        material['liked_by'] = material.liked_by.length
+
 
         // rename user key as uploaded_by
         const { uploader: uploaded_by, ...rest } = material
+
         res.status(200).send({ ...rest, uploaded_by })
 
     } catch (err) {
@@ -639,7 +655,6 @@ exports.toggleLike = async (req, res, next) => {
             })
             res.status(200).send({ unliked: true })
         } else {
-            const liked_by = material.liked_by
             await prisma.material.update({
                 where: {
                     id: Number(materialId)
