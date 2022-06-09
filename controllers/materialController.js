@@ -31,7 +31,8 @@ exports.getMaterial = async (req, res, next) => {
                 approver: {
                     select: {
                         id: true,
-                        fullname: true
+                        fullname: true,
+                        role: true
                     }
                 },
                 material_link: {
@@ -43,7 +44,8 @@ exports.getMaterial = async (req, res, next) => {
                 uploader: {
                     select: { id: true, fullname: true, role: true }
                 },
-                liked_by: true
+                liked_by: true,
+                is_uploaded_anonymously: true
             }
         })
 
@@ -54,12 +56,21 @@ exports.getMaterial = async (req, res, next) => {
             return next(new RuetkitError(404, { detail: 'The material you requested was not found' }))
 
         if (material.approver.id === Number(process.env.SYSTEM_ID)) {
+            delete material.approver.id
             material.approver.fullname = 'System'
         }
     
-
         material.liked = material.liked_by.includes(req.user.id)
         material['liked_by'] = material.liked_by.length
+
+        // check is uploader is anonymous
+        //  if so check if uploader is current signed in user
+        //      if so allow uploader name else remove
+
+
+        if (material.is_uploaded_anonymously && material.uploader.id !== req.user.id) {
+            material.uploader = {fullname: 'Anonymous'}
+        }
 
 
         // rename user key as uploaded_by
