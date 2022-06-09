@@ -51,11 +51,11 @@ exports.getMaterial = async (req, res, next) => {
 
         // return 403 if material doesn't exist or
         //                                         material is not approved and user is not owner
-        console.log(req.user.role)
+
         if (material === null || (material.approver === null && material.uploader.id !== req.user.id && req.user.role === 'USER'))
             return next(new RuetkitError(404, { detail: 'The material you requested was not found' }))
 
-        if (material.approver.id === Number(process.env.SYSTEM_ID)) {
+        if (material.approver?.id === Number(process.env.SYSTEM_ID)) {
             delete material.approver.id
             material.approver.fullname = 'System'
         }
@@ -532,37 +532,6 @@ exports.deleteMaterial = async (req, res, next) => {
         prisma.$disconnect()
     }
 }
-
-exports.approveMaterial = async (req, res, next) => {
-    const { materialId } = req.params
-
-    // TODO chheck if materialId is not number
-
-    try {
-        const material = await prisma.material.update({
-            data: {
-                approver: {
-                    connect: { id: req.user.id }
-                }
-            },
-            where: {
-                id: Number(materialId)
-            }
-        })
-        res.sendStatus(200)
-        console.log(material)
-    } catch (err) {
-        console.log(err)
-        if (err.code === 'P2025') {
-            // if material doesn't exist
-            return next(new RuetkitError(404, { detail: 'Material was not found' }))
-        }
-        return next(new RuetkitError())
-    } finally {
-        prisma.$disconnect()
-    }
-}
-
 
 exports.uploadMaterial = async (req, res, next) => {
     const title = req.body.title || req.files[0].originalname
