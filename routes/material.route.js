@@ -19,8 +19,6 @@ materialRoute.post('/check', [auth], materialController.checkMaterialTitle)
 
 materialRoute.delete('/:materialId', [auth], materialController.deleteMaterial)
 
-materialRoute.patch('/:materialId/approve', [auth, requireStaffOrAdmin], materialController.approveMaterial)
-
 materialRoute.post('/upload', [auth, upload.any()], materialController.uploadMaterial)
 
 materialRoute.post('/thumbnails/upload', [auth, upload.any()], materialController.uploadThumbnail)
