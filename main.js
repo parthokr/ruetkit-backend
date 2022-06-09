@@ -22,12 +22,14 @@ const materialRoute = require('./routes/material.route')
 const departmentRoute = require('./routes/department.route')
 const courseRoute = require('./routes/course.route')
 const statRoute = require('./routes/stat.route')
+const adminRoute = require('./routes/admin.route')
 
 app.use('/api/users', userRoute)
 app.use('/api/departments', departmentRoute)
 app.use('/api/materials', materialRoute)
 app.use('/api/courses', courseRoute)
 app.use('/api/stat', statRoute)
+app.use('/api/admin', adminRoute)
 
 app.use((err, req, res, next) => {
     res.status(err.code).send({error: err.message})
