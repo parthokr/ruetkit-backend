@@ -10,28 +10,36 @@ if (admin.apps.length === 0) {
 }
 
 exports.sendNotification = ({ userID, approvalOrDisprovalNotification }) => {
-    admin.database().ref(`/users/${userID}/token`).on('value', (snapshot) => {
-        const registrationToken = snapshot.val()
-        const message = {
-            notification: approvalOrDisprovalNotification.notification,
-            data: {
-                type: approvalOrDisprovalNotification.type
-            },
-            webpush: {
-                fcmOptions: {
-                    link: approvalOrDisprovalNotification.link
-                }
-            },
-            token: registrationToken
-        }
-    
-        admin.messaging().send(message)
-          .then((response) => {
-            // Response is a message ID string.
-            console.log('Successfully sent message:', response);
-          })
-          .catch((error) => {
-            console.log('Error sending message:', error);
+    try {
+        admin.database().ref(`/users/${userID}/token`).on('value', (snapshot) => {
+            const registrationToken = snapshot.val()
+            
+            const message = {
+                notification: approvalOrDisprovalNotification.notification,
+                data: {
+                    type: approvalOrDisprovalNotification.type
+                },
+                webpush: {
+                    fcmOptions: {
+                        link: approvalOrDisprovalNotification.link
+                    }
+                },
+                token: registrationToken
+            }
+
+            // resgistrationToken may not exist for unsupported browsers
+            if (!registrationToken) return
+            admin.messaging().send(message)
+              .then((response) => {
+                // Response is a message ID string.
+                console.log('Successfully sent message:', response);
+              })
+              .catch((error) => {
+                console.log(error);
+                throw error
+            })
         })
-    })
+    } catch (err) {
+        throw err
+    }
 }
