@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client')
 const RuetkitError = require('../../errors/ruetkit')
+const { sendNotification } = require('../../services/sendNotification')
 const prisma = new PrismaClient()
 
 exports.listMaterials = async (req, res, next) => {
@@ -321,14 +322,35 @@ exports.approveMaterial = async (req, res, next) => {
             },
             where: {
                 id: Number(materialId)
-            }
+            },
+            select: {title: true, uploader: {select: {id: true}}}
         })
+
+        // create a notification
+        
+        // await prisma.notification.create({
+        //     data: {
+        //         description: `${material.title} has been approved`,
+        //         user: {connect: {id: material.uploader.id}}
+        //     }
+        // })
+
+        const approvalOrDisprovalNotification = {
+            notification: {
+                title: 'Material approved',
+                body: `${material.title} has been approved`
+            },
+            type: 'info',
+            link: `https://ruetkit.live/material/${material.id}`
+        }
+        sendNotification({userID: material.uploader.id, approvalOrDisprovalNotification})
+
         res.status(200).send({
             approver: {
                 id: req.user.id
             }
         })
-        console.log(material)
+        // console.log(material)
     } catch (err) {
         console.log(err)
         if (err.code === 'P2025') {
@@ -354,10 +376,31 @@ exports.disproveMaterial = async (req, res, next) => {
             },
             where: {
                 id: Number(materialId)
-            }
+            },
+            select: {title: true, uploader: {select: {id: true}}}
         })
+        
+        // create a notification
+
+        const approvalOrDisprovalNotification = {
+            notification: {
+                title: 'Material disproved',
+                body: `${material.title} has been disproved`
+            },
+            type: 'warning',
+            link: `https://ruetkit.live/material/${material.id}`
+        }
+        sendNotification({userID: material.uploader.id, approvalOrDisprovalNotification})
+
+        // await prisma.notification.create({
+        //     data: {
+        //         description: `${material.title} has been disproved`,
+        //         user: {connect: {id: material.uploader.id}}
+        //     }
+        // })
+
         res.sendStatus(200)
-        console.log(material)
+        // console.log(material)
     } catch (err) {
         console.log(err)
         if (err.code === 'P2025') {
@@ -394,3 +437,13 @@ exports.deleteMaterial = async (req, res, next) => {
         prisma.$disconnect()
     }
 }
+
+
+// exports.notify = async (req, res) => {
+//     const {userID} = req.body
+//     const notification = {
+//         title: 'Approved',
+//         body: `Sample has been approved`
+//     }
+//     sendNotification({userID, notification})
+// }
