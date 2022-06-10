@@ -341,7 +341,7 @@ exports.approveMaterial = async (req, res, next) => {
                 body: `${material.title} has been approved`
             },
             type: 'info',
-            link: `https://ruetkit.live/material/${material.id}`
+            link: `https://ruetkit.live/material/${materialId}`
         }
         sendNotification({userID: material.uploader.id, approvalOrDisprovalNotification})
 
@@ -388,7 +388,7 @@ exports.disproveMaterial = async (req, res, next) => {
                 body: `${material.title} has been disproved`
             },
             type: 'warning',
-            link: `https://ruetkit.live/material/${material.id}`
+            link: `https://ruetkit.live/material/${materialId}`
         }
         sendNotification({userID: material.uploader.id, approvalOrDisprovalNotification})
 
