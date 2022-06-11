@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client')
 const RuetkitError = require('../../errors/ruetkit')
+const { createNotification } = require('../../services/manageNotification')
 const { sendNotification } = require('../../services/sendNotification')
 const prisma = new PrismaClient()
 
@@ -343,6 +344,12 @@ exports.approveMaterial = async (req, res, next) => {
             type: 'info',
             link: `https://ruetkit.live/material/${materialId}`
         }
+        createNotification({
+            text: approvalOrDisprovalNotification.notification.body, 
+            userID: material.uploader.id,
+            navigate: `/material/${materialId}`
+        })
+
         sendNotification({userID: material.uploader.id, approvalOrDisprovalNotification})
 
         res.status(200).send({
@@ -390,6 +397,13 @@ exports.disproveMaterial = async (req, res, next) => {
             type: 'warning',
             link: `https://ruetkit.live/material/${materialId}`
         }
+
+        createNotification({
+            text: approvalOrDisprovalNotification.notification.body, 
+            userID: material.uploader.id,
+            navigate: `/material/${materialId}`
+        })
+
         sendNotification({userID: material.uploader.id, approvalOrDisprovalNotification})
 
         // await prisma.notification.create({
