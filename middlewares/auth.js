@@ -25,6 +25,7 @@ const auth = async (req, res, next) => {
                 }
             }
         )
+        if (user === null) return next(new RuetkitError(404, {detail: 'This user doesn\'t exist'}))
         if (!user.is_verified) {return next(new RuetkitError(403, {detail: 'This account is not verified'}))}
         if (user.status === 'RESTRICTED') {return next(new RuetkitError(403, {detail: 'This account has been restricted, contact staff'}))}
         req.user = user
