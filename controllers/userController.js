@@ -428,7 +428,7 @@ exports.saveFCMToken = async (req, res, next) => {
 }
 
 exports.removeFCMToken = async (req, res, next) => {
-    const {token} = req.body
+    const {token} = req.query
     if (token === '' || token === null || token === undefined) {
         return next(new RuetkitError(400, {detail: 'Token is required'}))
     }
