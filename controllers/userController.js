@@ -1,3 +1,4 @@
+require('dotenv').config()
 const RuetkitError = require('../errors/ruetkit')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
@@ -7,10 +8,16 @@ const { PrismaClient } = require('@prisma/client')
 const { sendMail } = require('../services/sendMail')
 const { saveFCMToken : _saveFCMToken } = require('../services/saveFCMToken')
 const prisma = new PrismaClient()
-
+const axios = require('axios')
 
 exports.signUp = async (req, res, next) => {
-    const { ruet_id, fullname, email, password, password2 } = req.body
+    const { ruet_id, fullname, email, password, password2, reCAPTCHAToken } = req.body
+
+    const isCaptchaVerified = await axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${reCAPTCHAToken}`)
+
+    if (!isCaptchaVerified.data.success) {
+        return next(new RuetkitError(400, {detail: 'Captcha verification expired'}))
+    }
 
 
     let errors = ['ruet_id', 'fullname', 'email', 'password', 'password2'].filter((field) => {
@@ -45,11 +52,11 @@ exports.signUp = async (req, res, next) => {
                 }
             }
         })
-        // sendMail({
-        //     to: user.email, 
-        //     subject: 'Verify your RuetKit account', 
-        //     text: `Greetings <strong>${fullname}</strong></br>Your RuetKit verification code is <font size='12px'><code>${verificationCode}</code></font>`
-        // })
+        sendMail({
+            to: user.email, 
+            subject: 'Verify your RuetKit account', 
+            text: `Greetings <strong>${fullname}</strong></br>Your RuetKit verification code is <font size='12px'><code>${verificationCode}</code></font>`
+        })
 
         res.send({ id: user.id })
     } catch (e) {
@@ -185,16 +192,23 @@ exports.resendVerification = async (req, res, next) => {
 
         if (user.is_verified) return next(new RuetkitError(403, {detail: 'This user has already been verified'}))
         if (user.status === 'RESTRICTED') return next(new RuetkitError(403, {detail: 'This user has been restricted'}))
+        const verificationCode = Math.random().toString(36).slice(2, 8).toUpperCase()
         await prisma.user.update({
+            select: {email: true, fullname: true},
             where: { id: userId },
             data: {
                 code: {
                     update: {
-                        code: Math.random().toString(36).slice(2, 8).toUpperCase()
+                        code: verificationCode
                     }
                 }
             }
         }).then(async _user => {
+            sendMail({
+                to: _user.email, 
+                subject: 'Verify your RuetKit account', 
+                text: `Greetings <strong>${_user.fullname}</strong></br>Your RuetKit verification code is <font size='12px'><code>${verificationCode}</code></font>`
+            })
             res.sendStatus(200)
         })
     } catch (e) {
@@ -394,20 +408,6 @@ exports.resetPassword = async (req, res, next) => {
     } finally {
         prisma.$disconnect()
     }
-}
-
-exports.listUsers = async (req, res, next) => {
-    const users = await prisma.user.findMany({
-        select: {
-            id: true,
-            fullname: true,
-            email: true,
-            role: true,
-            status: true
-        }
-    })
-
-    res.send(users)
 }
 
 exports.saveFCMToken = async (req, res, next) => {
