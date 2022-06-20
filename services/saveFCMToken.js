@@ -1,5 +1,4 @@
-const admin = require("firebase-admin");
-
+const admin = require("firebase-admin")
 const serviceAccount = require('./ruetkit-firebase-adminsdk-ov339-84e5818ac7.json');
 
 if (admin.apps.length === 0) {
@@ -8,13 +7,24 @@ if (admin.apps.length === 0) {
         databaseURL: "https://ruetkit-default-rtdb.firebaseio.com"
     })
 }
+const db = admin.firestore()
 
 exports.saveFCMToken = async ({ userID, token }) => {
-    return admin.database().ref('users').child(userID).set(
-        {
-            token
-        }
-    )
+    // return admin.database().ref('users').child(userID).set(
+    //     {
+    //         token
+    //     }
+    // )
+    db.collection('data').doc(userID.toString()).update({
+        tokens: admin.firestore.FieldValue.arrayUnion(token)
+    }, {merge: true})
+    .then((data) => {
+        console.log(data)
+    })
+    .catch((err) => {
+        console.log(err);
+    })
+    return 
 }
 
 // admin.messaging().send(message)
