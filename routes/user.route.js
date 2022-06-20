@@ -37,8 +37,11 @@ userRoute.post('/:id/password/reset/verify', userController.verifyPasswordResetV
 // reset password
 userRoute.post('/:id/password/reset', userController.resetPassword)
 
-// save fcm token to firebase realtime database
+// save fcm token to firestore
 userRoute.post('/fcm', [auth], userController.saveFCMToken)
+
+// remove fcm token from firestore
+userRoute.delete('/fcm', [auth], userController.removeFCMToken)
 
 
 module.exports = userRoute
