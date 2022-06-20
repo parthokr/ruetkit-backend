@@ -7,6 +7,8 @@ const { generateAccessToken, generateRefreshToken } = require('../services/gener
 const { PrismaClient } = require('@prisma/client')
 const { sendMail } = require('../services/sendMail')
 const { saveFCMToken : _saveFCMToken } = require('../services/saveFCMToken')
+const { removeFCMToken : _removeFCMToken } = require('../services/removeFCMToken')
+
 const prisma = new PrismaClient()
 const axios = require('axios')
 
@@ -417,6 +419,21 @@ exports.saveFCMToken = async (req, res, next) => {
     }
     try {
         _saveFCMToken({userID: req.user.id, token})
+        res.sendStatus(200)
+    } catch (err) {
+        console.log(err)
+
+        return next(new RuetkitError())
+    }
+}
+
+exports.removeFCMToken = async (req, res, next) => {
+    const {token} = req.body
+    if (token === '' || token === null || token === undefined) {
+        return next(new RuetkitError(400, {detail: 'Token is required'}))
+    }
+    try {
+        _removeFCMToken({userID: req.user.id, token})
         res.sendStatus(200)
     } catch (err) {
         console.log(err)
