@@ -17,7 +17,9 @@ exports.sendNotification = ({ id, userID, approvalOrDisprovalNotification }) => 
             if (!doc.exists) {
                 return console.log('Couldn\'t send notification');
             }
-            const registrationTokens = doc.get('tokens')
+            let registrationTokens = doc.get('tokens') || []
+            console.log(registrationTokens)
+
             registrationTokens.map(token => {
                 const message = {
                     notification: approvalOrDisprovalNotification.notification,
