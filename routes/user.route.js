@@ -19,9 +19,6 @@ userRoute.post('/:id/verify', userController.verify)
 // TODO make it patch
 userRoute.patch('/:id/verify', userController.resendVerification)
 
-// list users (experimental endpoint)
-userRoute.get('/', [auth, requireStaffOrAdmin], userController.listUsers)
-
 // verify existing access token
 userRoute.post('/token', [auth], userController.verifyToken)
 
