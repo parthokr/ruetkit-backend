@@ -9,37 +9,74 @@ if (admin.apps.length === 0) {
     })
 }
 
-exports.sendNotification = ({ userID, approvalOrDisprovalNotification }) => {
-    try {
-        admin.database().ref(`/users/${userID}/token`).on('value', (snapshot) => {
-            const registrationToken = snapshot.val()
-            
-            const message = {
-                notification: approvalOrDisprovalNotification.notification,
-                data: {
-                    type: approvalOrDisprovalNotification.type
-                },
-                webpush: {
-                    fcmOptions: {
-                        link: approvalOrDisprovalNotification.link
-                    }
-                },
-                token: registrationToken
-            }
+const db = admin.firestore()
 
-            // resgistrationToken may not exist for unsupported browsers
-            if (!registrationToken) return
-            admin.messaging().send(message)
-              .then((response) => {
-                // Response is a message ID string.
-                console.log('Successfully sent message:', response);
-              })
-              .catch((error) => {
-                console.log(error);
-                throw error
+exports.sendNotification = ({ id, userID, approvalOrDisprovalNotification }) => {
+    db.collection('data').doc(userID.toString()).get()
+        .then((doc) => {
+            if (!doc.exists) {
+                return console.log('Couldn\'t send notification');
+            }
+            const registrationTokens = doc.get('tokens')
+            registrationTokens.map(token => {
+                const message = {
+                    notification: approvalOrDisprovalNotification.notification,
+                    data: {
+                        id,
+                        severity: approvalOrDisprovalNotification.severity,
+                        navigate: approvalOrDisprovalNotification.navigate
+                    },
+                    webpush: {
+                        fcmOptions: {
+                            link: approvalOrDisprovalNotification.link
+                        }
+                    },
+                    token: token
+                }
+    
+                // resgistrationToken may not exist for unsupported browsers
+                admin.messaging().send(message)
+                  .then((response) => {
+                    // Response is a message ID string.
+                    console.log('Successfully sent message:', response);
+                  })
+                  .catch((error) => {
+                    console.log(error);
+                    throw error
+                })
             })
         })
-    } catch (err) {
-        throw err
-    }
+    // try {
+    //     admin.database().ref(`/users/${userID}/token`).on('value', (snapshot) => {
+    //         const registrationToken = snapshot.val()
+            
+    //         const message = {
+    //             notification: approvalOrDisprovalNotification.notification,
+    //             data: {
+    //                 severity: approvalOrDisprovalNotification.severity,
+    //                 navigate: approvalOrDisprovalNotification.navigate
+    //             },
+    //             webpush: {
+    //                 fcmOptions: {
+    //                     link: approvalOrDisprovalNotification.link
+    //                 }
+    //             },
+    //             token: registrationToken
+    //         }
+
+    //         // resgistrationToken may not exist for unsupported browsers
+    //         if (!registrationToken) return
+    //         admin.messaging().send(message)
+    //           .then((response) => {
+    //             // Response is a message ID string.
+    //             console.log('Successfully sent message:', response);
+    //           })
+    //           .catch((error) => {
+    //             console.log(error);
+    //             throw error
+    //         })
+    //     })
+    // } catch (err) {
+    //     throw err
+    // }
 }
