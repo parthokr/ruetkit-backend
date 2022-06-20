@@ -45,7 +45,7 @@ model Material {
   course_id   Int
   approver_id Int?
   material_link_id Int
-  thumbnail_link_id Int
+  thumbnail_link_id Int @unique
   liked_by Int[]
   like_count Int @default(0)
 
