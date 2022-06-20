@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client')
+const { v4: uuidv4 } = require('uuid')
 const RuetkitError = require('../../errors/ruetkit')
 const { createNotification } = require('../../services/manageNotification')
 const { sendNotification } = require('../../services/sendNotification')
@@ -21,7 +22,6 @@ exports.listMaterials = async (req, res, next) => {
             select: {
                 id: true,
                 title: true,
-                description: true,
                 course: {
                     select: { 
                         id: true, 
@@ -341,16 +341,21 @@ exports.approveMaterial = async (req, res, next) => {
                 title: 'Material approved',
                 body: `${material.title} has been approved`
             },
-            type: 'info',
-            link: `https://ruetkit.live/material/${materialId}`
+            severity: 'success',
+            link: `https://ruetkit.live/material/${materialId}`,
+            navigate: `/material/${materialId}`
         }
+        const notificastionID = uuidv4()
         createNotification({
-            text: approvalOrDisprovalNotification.notification.body, 
+            id: notificastionID,
+            title: approvalOrDisprovalNotification.notification.title,
+            body: approvalOrDisprovalNotification.notification.body, 
+            severity: approvalOrDisprovalNotification.severity,
             userID: material.uploader.id,
             navigate: `/material/${materialId}`
         })
 
-        sendNotification({userID: material.uploader.id, approvalOrDisprovalNotification})
+        sendNotification({id: notificastionID, userID: material.uploader.id, approvalOrDisprovalNotification})
 
         res.status(200).send({
             approver: {
@@ -394,17 +399,21 @@ exports.disproveMaterial = async (req, res, next) => {
                 title: 'Material disproved',
                 body: `${material.title} has been disproved`
             },
-            type: 'warning',
-            link: `https://ruetkit.live/material/${materialId}`
+            severity: 'warning',
+            link: `https://ruetkit.live/material/${materialId}`,
+            navigate: `/material/${materialId}`
         }
-
+        const notificastionID = uuidv4()
         createNotification({
-            text: approvalOrDisprovalNotification.notification.body, 
+            id: notificastionID,
+            title: approvalOrDisprovalNotification.notification.title,
+            body: approvalOrDisprovalNotification.notification.body, 
+            severity: approvalOrDisprovalNotification.severity,
             userID: material.uploader.id,
             navigate: `/material/${materialId}`
         })
 
-        sendNotification({userID: material.uploader.id, approvalOrDisprovalNotification})
+        sendNotification({id: notificastionID, userID: material.uploader.id, approvalOrDisprovalNotification})
 
         // await prisma.notification.create({
         //     data: {
