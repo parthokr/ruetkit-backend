@@ -359,7 +359,8 @@ exports.approveMaterial = async (req, res, next) => {
 
         res.status(200).send({
             approver: {
-                id: req.user.id
+                id: req.user.id,
+                fullname: req.user.fullname
             }
         })
         // console.log(material)
