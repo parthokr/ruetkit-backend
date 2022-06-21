@@ -64,7 +64,7 @@ exports.signUp = async (req, res, next) => {
     } catch (e) {
         console.log(e)
         if (e.code === 'P2002') {
-            return next(new RuetkitError(401, { field: e.meta.target[0], detail: `${e.meta.target[0]} is already used` }))
+            return next(new RuetkitError(401, { field: e.meta.target[0], detail: `${e.meta.target[0].charAt(0).toUpperCase() + e.meta.target[0].slice(1)} is already used` }))
         }
         return next(new RuetkitError())
     } finally {
