@@ -19,11 +19,12 @@ exports.countNotifications = async ({userID, cb}) => {
 
 }
 
-exports.listNotification = async ({userID, cb}) => {
+exports.listNotification = async ({userID, page, skip, cb}) => {
     // admin.database().ref(`/notifications`).orderBy('user_id').once('value', (snapshot) => {
     //      cb(snapshot.val() || [])
     // })
-    db.collection('notifications').where('user_id', '==', userID).orderBy('created_on', 'desc').get()
+    const pageSize = 5
+    db.collection('notifications').where('user_id', '==', userID).orderBy('created_on', 'desc').limit(pageSize).offset((page-1)*pageSize + skip).get()
     .then((doc) => {
         const cols = ['id', 'title', 'body', 'read', 'severity', 'navigate', 'created_on']
         const rows = []
