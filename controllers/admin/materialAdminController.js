@@ -172,6 +172,9 @@ exports.listMaterials = async (req, res, next) => {
                 material['liked'] = true
             }
 
+            // determine if current signed in user is owner of this material
+            material['owner'] = material.uploader.id === req.user.id
+
             // count number of likes
             material['liked_by'] = material.liked_by.length
 
@@ -180,7 +183,7 @@ exports.listMaterials = async (req, res, next) => {
                 material.approver.fullname = 'System'
             }
             
-            // rename user key as uploaded_by
+            // rename uploader key as uploaded_by
             const { uploader: uploaded_by, ...rest } = material
             material = { ...rest, uploaded_by }
 
@@ -380,9 +383,24 @@ exports.approveMaterial = async (req, res, next) => {
 exports.disproveMaterial = async (req, res, next) => {
     const { materialId } = req.params
 
-    // TODO chheck if materialId is not number
+    // TODO check if materialId is not number
+
 
     try {
+        /* check if uploader has lower rank than disapprover or disapprover is uploader */
+
+        const allowedRolesFor = {
+            STAFF: ['USER'],
+            ADMIN: ['USER', 'STAFF']
+        }
+        
+        const {uploader: {id: ownerID, role: ownerRole}} = 
+            (await prisma.material.findUnique({where: {id: Number(materialId)}, select: {uploader: {select: {id: true, role: true}}}}))
+        
+        if (!allowedRolesFor[req.user.role].includes(ownerRole) && ownerID !== req.user.id) 
+            return next(new RuetkitError(403, {detail: 'You are not allowed to perform this action'}))
+
+
         const material = await prisma.material.update({
             data: {
                 approver: {disconnect: true}
