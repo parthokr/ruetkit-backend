@@ -573,7 +573,7 @@ exports.checkMaterialTitle = async (req, res, next) => {
             take: 1
         })
         if (searchTitle[0]?.title.toLocaleLowerCase() === title) { // equivalent to searchTitle[0] && searchTitle[0].title.toLowerCase() === title
-            return res.sendStatus(403)
+            return res.status(403).send({id: searchTitle[0].id, title: searchTitle[0].title})
         }
         res.sendStatus(200)
     } catch (err) {
