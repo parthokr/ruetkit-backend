@@ -4,7 +4,6 @@ const userRoute = express.Router()
 
 // import all middlewares
 const auth = require('../middlewares/auth')
-const requireStaffOrAdmin = require('../middlewares/requireStaffOrAdmin')
 
 const userController = require('../controllers/userController')
 
