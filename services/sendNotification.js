@@ -18,7 +18,6 @@ exports.sendNotification = ({ id, userID, approvalOrDisprovalNotification }) => 
                 return console.log('Couldn\'t send notification');
             }
             let registrationTokens = doc.get('tokens') || []
-            console.log(registrationTokens)
 
             registrationTokens.map(token => {
                 const message = {
