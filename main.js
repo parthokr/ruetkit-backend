@@ -33,6 +33,8 @@ app.use('/api/stat', statRoute)
 app.use('/api/admin', adminRoute)
 app.use('/api/notifications', notificationRoute)
 
+app.get('/api/ping', async (req, res) => res.sendStatus(200))
+
 app.use((err, req, res, next) => {
     res.status(err.code).send({error: err.message})
 })
