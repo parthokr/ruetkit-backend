@@ -18,7 +18,13 @@ exports.countNotifications = async (req, res, next) => {
 }
 
 exports.listNotifications = async (req, res, next) => {
-    _listNotification({userID: req.user.id, cb: (data) => {res.status(200).send(data)}})
+    let {page, skip=0} = req.query
+    page = Number(page)
+    skip = Number(skip)
+    if (page === '' || page === null || page === undefined || isNaN(page)) {
+        return next(new RuetkitError(400, {detail: 'page is required'}))
+    }
+    _listNotification({userID: req.user.id, page, skip, cb: (data) => {res.status(200).send(data)}})
 }
 
 exports.markAsRead = async (req, res, next) => {
