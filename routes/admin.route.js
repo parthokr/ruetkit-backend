@@ -1,6 +1,7 @@
 const express = require('express')
 const auth = require('../middlewares/auth')
 const requireStaffOrAdmin = require('../middlewares/requireStaffOrAdmin')
+const requireAdmin = require('../middlewares/requireAdmin')
 const adminRoute = express.Router()
 
 const materialAdminController = require('../controllers/admin/materialAdminController')
@@ -18,5 +19,8 @@ adminRoute.post('/departments', [auth, requireStaffOrAdmin], departmentAdminCont
 adminRoute.patch('/departments/:departmentId', [auth, requireStaffOrAdmin], departmentAdminController.updateDepartment)
 
 adminRoute.get('/users', [auth, requireStaffOrAdmin], userAdminController.listUsers)
+adminRoute.patch('/users/:userId/upgrade', [auth, requireAdmin], userAdminController.upgradeUser)
+adminRoute.patch('/users/:userId/downgrade', [auth, requireAdmin], userAdminController.downgradeUser)
+
 adminRoute.patch('/users/:userId/restrict/toggle', [auth, requireStaffOrAdmin], userAdminController.toggleRestriction)
 module.exports = adminRoute
