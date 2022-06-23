@@ -1,11 +1,16 @@
+require('dotenv').config()
 const { PrismaClient } = require('@prisma/client')
 const RuetkitError = require('../../errors/ruetkit')
+const { v4: uuidv4 } = require('uuid')
 const { sendMail } = require('../../services/sendMail')
+const { checkPassword } = require('../../utils/checkPassword')
+const { createNotification } = require('../../services/manageNotification')
+const { sendNotification } = require('../../services/sendNotification')
 const prisma = new PrismaClient()
 
 exports.listUsers = async (req, res, next) => {
     try {
-        const users = await prisma.user.findMany({
+        let users = await prisma.user.findMany({
             select: {
                 id: true,
                 ruet_id: true,
@@ -16,7 +21,14 @@ exports.listUsers = async (req, res, next) => {
                 status: true
             }
         })
-
+        users = users.map(user => {
+            user['owner'] = false
+            if (user.id === req.user.id) {
+                user['owner'] = true
+                return user
+            }
+            return user
+        })
         res.send(users)
     } catch (err) {
         return next(new RuetkitError())
@@ -27,7 +39,6 @@ exports.listUsers = async (req, res, next) => {
 
 exports.toggleRestriction = async (req, res, next) => {
     let {reason} = req.body
-    reason = reason.replace('\n', '<br/>')
 
     const allowedRolesToRestrict = {
         STAFF: ['USER'],
@@ -51,6 +62,8 @@ exports.toggleRestriction = async (req, res, next) => {
         if (targetUser.status === 'UNRESTRICTED' && (reason === undefined || reason.length === 0)) {
             return next(new RuetkitError(404, {field: 'reason', detail: 'Reason is required'}))
         }
+
+        
         if (allowedRolesToRestrict[req.user.role].includes(targetUser.role)) {
             const updatedUser = await prisma.user.update({
                 select: {
@@ -63,6 +76,8 @@ exports.toggleRestriction = async (req, res, next) => {
             let mailOption = {}
             // send email on account restriction
             if (updatedUser.status === 'RESTRICTED') {
+                reason = reason.replace('\n', '<br/>')
+
                 mailOption = {
                     to: targetUser.email, 
                     subject: 'RuetKit account restriction',
@@ -106,6 +121,144 @@ exports.toggleRestriction = async (req, res, next) => {
 
     } catch (err) {
         console.log(err);
+    } finally {
+        prisma.$disconnect()
+    }
+}
+
+exports.upgradeUser = async (req, res, next) => {
+    let {userId: id} = req.params 
+    let {to, password} = req.body
+    id = Number(id)
+    if (isNaN(id)) return next(new RuetkitError(400, {detail: 'Invalid user id provided'}))
+    if (to === '' || to === null || to === undefined) return next(new RuetkitError(400, {detail: "'to' is required"}))
+    if (password === '' || password === null || password === undefined) return next(new RuetkitError(400, {detail: "Password is required"}))
+
+    const allowedRoledToUpgradeTo = req.user.id ===  Number(process.env.SYSTEM_ID) ? 
+                                    ['STAFF', 'ADMIN'] : ['STAFF']
+    if (!allowedRoledToUpgradeTo.includes(to)) return next(new RuetkitError(400, {detail: `Allowed roles are ${allowedRoledToUpgradeTo.toString()}`}))
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: {id: req.user.id},
+            select: {
+                password: true
+            }
+        })
+
+        if (user === null) {
+            return next(new RuetkitError(404, {detail: 'This user doesn\'t exist'}))
+        }
+
+        if (!await checkPassword(password, user.password)) {
+            return next(new RuetkitError(403, {field: 'password', detail: 'Incorrect password'}))
+        }
+        const updatedUser = await prisma.user.update({
+            where: {id},
+            data: {
+                role: to
+            },
+            select: {
+                fullname: true
+            }
+        })
+        const notificastionID = uuidv4()
+        const upgradeNotification = {
+            notification: {
+                title: 'You have been upgraded to STAFF',
+                body: `Congratulations ${updatedUser.fullname}! Your role has been upgraded to STAFF`,
+            },
+            severity: 'info',
+            link: 'https://ruetkit.live/admin/user',
+            navigate: `/user/${id}`
+        }
+
+        createNotification({
+            id: notificastionID,
+            title: upgradeNotification.notification.title,
+            body: upgradeNotification.notification.body,
+            severity: upgradeNotification.severity,
+            userID: id,
+            navigate: upgradeNotification.navigate
+        })
+        sendNotification({id: notificastionID, userID: id, approvalOrDisprovalNotification: upgradeNotification})
+
+        res.status(200).send({id, to})
+
+    } catch (err) {
+        console.log(err)
+        if (err.code === 'P2025') {
+            return next(new RuetkitError(404, {detail: 'Requested user was not found'}))
+        }
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }
+}
+
+exports.downgradeUser = async (req, res, next) => {
+    let {userId: id} = req.params 
+    let {to, password} = req.body
+    id = Number(id)
+    if (isNaN(id)) return next(new RuetkitError(400, {detail: 'Invalid user id provided'}))
+    if (to === '' || to === null || to === undefined) return next(new RuetkitError(400, {detail: "'to' is required"}))
+    if (password === '' || password === null || password === undefined) return next(new RuetkitError(400, {detail: "Password is required"}))
+
+    const allowedRoledToDowngradeTo = req.user.id ===  Number(process.env.SYSTEM_ID) ? 
+                                    ['USER', 'STAFF'] : ['USER']
+    if (!allowedRoledToDowngradeTo.includes(to)) return next(new RuetkitError(400, {detail: `Allowed roles are ${allowedRoledToDowngradeTo.toString()}`}))
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: {id: req.user.id},
+            select: {
+                password: true
+            }
+        })
+
+        if (user === null) {
+            return next(new RuetkitError(404, {detail: 'This user doesn\'t exist'}))
+        }
+
+        if (!await checkPassword(password, user.password)) {
+            return next(new RuetkitError(403, {field: 'password', detail: 'Incorrect password'}))
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: {id},
+            data: {
+                role: to
+            }
+        })
+
+        const notificastionID = uuidv4()
+        const downgradeNotification = {
+            notification: {
+                title: 'You have been downgraded to USER',
+                body: `Hello ${updatedUser.fullname}, your role has been downgraded to USER`,
+            },
+            severity: 'info',
+            link: 'https://ruetkit.live/admin/user',
+            navigate: `/user/${id}`
+        }
+
+        createNotification({
+            id: notificastionID,
+            title: downgradeNotification.notification.title,
+            body: downgradeNotification.notification.body,
+            severity: downgradeNotification.severity,
+            userID: id,
+            navigate: downgradeNotification.navigate
+        })
+        sendNotification({id: notificastionID, userID: id, approvalOrDisprovalNotification: downgradeNotification})
+        res.status(200).send({id, to})
+
+    } catch (err) {
+        console.log(err)
+        if (err.code === 'P2025') {
+            return next(new RuetkitError(404, {detail: 'Requested user was not found'}))
+        }
+        return next(new RuetkitError())
     } finally {
         prisma.$disconnect()
     }
