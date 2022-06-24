@@ -170,7 +170,8 @@ exports.upgradeUser = async (req, res, next) => {
             },
             severity: 'info',
             link: 'https://ruetkit.live/admin/user',
-            navigate: `/user/${id}`
+            navigate: `/user/${id}`,
+            dispatch: 'SET_ROLE;STAFF'
         }
 
         createNotification({
@@ -239,7 +240,8 @@ exports.downgradeUser = async (req, res, next) => {
             },
             severity: 'info',
             link: 'https://ruetkit.live/admin/user',
-            navigate: `/user/${id}`
+            navigate: `/user/${id}`,
+            dispatch: 'SET_ROLE;USER'
         }
 
         createNotification({
