@@ -25,7 +25,8 @@ exports.sendNotification = ({ id, userID, approvalOrDisprovalNotification }) => 
                     data: {
                         id,
                         severity: approvalOrDisprovalNotification.severity,
-                        navigate: approvalOrDisprovalNotification.navigate
+                        navigate: approvalOrDisprovalNotification.navigate,
+                        dispatch: approvalOrDisprovalNotification.dispatch || ''
                     },
                     webpush: {
                         fcmOptions: {
