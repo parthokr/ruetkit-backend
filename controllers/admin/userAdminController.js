@@ -9,6 +9,9 @@ const { sendNotification } = require('../../services/sendNotification')
 const prisma = new PrismaClient()
 
 exports.listUsers = async (req, res, next) => {
+    const {query, page=1} = req.query // default page is 1
+    console.log(query);
+    const ROW_SIZE = 100
     try {
         let users = await prisma.user.findMany({
             select: {
@@ -19,7 +22,32 @@ exports.listUsers = async (req, res, next) => {
                 is_verified: true,
                 role: true,
                 status: true
-            }
+            },
+            /* 
+                if query is defined and not null 
+                add a where clause 
+                else skip where clause [default rendering]
+
+                if query is a number then search in ruet_id attribute only
+                else search in full_name and email
+            */
+            ...(query && {
+                where: {
+                    OR: [
+                        {
+                            ...(!isNaN(query) && {ruet_id: {equals: Number(query)}}),
+                        },
+                        {
+                            ...(isNaN(Number(query)) && {fullname: {contains: query, mode: 'insensitive'}})
+                        },
+                        {
+                            ...(isNaN(Number(query)) && {email: {contains: query, mode: 'insensitive'}})
+                        }
+                    ]
+                }
+            }),
+            skip: (page-1)*ROW_SIZE,
+            take: ROW_SIZE
         })
         users = users.map(user => {
             user['owner'] = false
@@ -31,11 +59,13 @@ exports.listUsers = async (req, res, next) => {
         })
         res.send(users)
     } catch (err) {
+        console.log(err)
         return next(new RuetkitError())
     } finally {
         prisma.$disconnect()
     }
 }
+
 
 exports.toggleRestriction = async (req, res, next) => {
     let {reason} = req.body
@@ -257,6 +287,87 @@ exports.downgradeUser = async (req, res, next) => {
 
     } catch (err) {
         console.log(err)
+        if (err.code === 'P2025') {
+            return next(new RuetkitError(404, {detail: 'Requested user was not found'}))
+        }
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }
+}
+
+/***********************************************************************************************************
+*                                     ========>Delete a user from ruetkit<========                         *
+*                                                                                                          *
+*    * Who are allowed to delete a user?                                                                   *
+*    -> Only ADMINs                                                                                        *
+*                                                                                                          *
+*    * Requested body parameters                                                                           *
+*    -> userId, password                                                                                   *
+***********************************************************************************************************/
+
+exports.deleteUser = async (req, res, next) => {
+    let {userId: id} = req.params 
+    let {password} = req.body
+    id = Number(id)
+    if (isNaN(id)) return next(new RuetkitError(400, {detail: 'Invalid user id provided'}))
+    if (password === '' || password === null || password === undefined) return next(new RuetkitError(400, {detail: "Password is required"}))
+
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: {id: req.user.id}, // id should be requested user's id, namely admin's id
+            select: {
+                id: true,
+                password: true
+            }
+        })
+
+        // what if admin doesn't exist? This may happen from a custom client with modified headers
+        if (user === null) {
+            return next(new RuetkitError(404, {detail: 'This user doesn\'t exist'}))
+        }
+        
+        // check if admin's password
+        if (!await checkPassword(password, user.password)) {
+            return next(new RuetkitError(403, {field: 'password', detail: 'Incorrect password'}))
+        }
+
+        // only user and staff's are deleteable
+        const allowedRolesToDelete = ['USER', 'STAFF']
+
+        const targetUser = await prisma.user.findUnique({
+            where: {id},
+            select: {role: true}
+        })
+
+        if (!allowedRolesToDelete.includes(targetUser.role)) {
+            return next(new RuetkitError(400, {detail: 'You are not allowed to perform this request'}))
+        }
+
+
+        // // admin can't delete delete himself/herself
+        // if (user.id === id) {
+        //     return next(new RuetkitError(400, {detail: 'You can\'t delete yourself'}))
+        // }
+
+        // now the end game
+        // delete the user
+        const deletedUser = await prisma.user.delete({
+            where: {id}
+        })
+
+        // what about sending an email to the deleted user about deletion of his/her account?
+        // hmm time to think?
+        // TODO mail user about deletion
+
+        // finally send 200
+        res.status(200).send({id})
+
+    } catch (err) {
+        console.log(err)
+        
+        // what if user to be deleted doesn't exist
         if (err.code === 'P2025') {
             return next(new RuetkitError(404, {detail: 'Requested user was not found'}))
         }
