@@ -2,7 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const userRoute = express.Router()
 
-// import all middlewares
+// import auth middlewares
 const auth = require('../middlewares/auth')
 
 const userController = require('../controllers/userController')
@@ -41,6 +41,9 @@ userRoute.post('/fcm', [auth], userController.saveFCMToken)
 
 // remove fcm token from firestore
 userRoute.delete('/fcm', [auth], userController.removeFCMToken)
+
+// get a user
+userRoute.get('/:id', [auth], userController.getUser)
 
 
 module.exports = userRoute
