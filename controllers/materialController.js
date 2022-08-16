@@ -88,15 +88,20 @@ exports.getMaterial = async (req, res, next) => {
 exports.listMaterials = async (req, res, next) => {
     // console.log(req.query)
     // if (req.query !== undefined) return _listFilteredMaterials(req, res, next)
-    const { query, dept, year, sem, cc: courseCode, uploaded_by: uploadedBy, page=1, exact, self } = req.query
+    const { query, dept, year, sem, cc: courseCode, uploaded_by: uploadedBy, page=1, exact } = req.query
+    
+
+    // default page size is 12
+    const size = 12
 
     // check if self is true
     // then return materials belong to signed in user regardless approval status
 
     // WARNING this block is for owner's lookup
-    if (self === 'true') {
+    const self = Number(uploadedBy) === req.user.id
+    if (self) {
         try {
-            const material = await prisma.material.findMany({
+            const materials = await prisma.material.findMany({
                 where: {
                     uploader: {
                         id: req.user.id
@@ -107,13 +112,35 @@ exports.listMaterials = async (req, res, next) => {
                     title: true,
                     approver: {
                         select: { id: true }
+                    },
+                    material_link: {
+                        select: {drive_file_id: true}
+                    },
+                    course: {
+                        select: {
+                            code: true
+                        }
+                    },
+                    thumbnail_link: {
+                        select: {
+                            url: true
+                        }
                     }
+                },
+                // TODO implement pagination
+                take: 12,
+                skip: (Number(page)-1)*12
+            })
+
+            // if (material === null) return next(new RuetkitError(404, { detail: 'No upload yet' }))
+
+            const found = await prisma.material.count({
+                where: {
+                    uploader_id: Number(uploadedBy)
                 }
             })
 
-            if (material === null) return next(new RuetkitError(404, { detail: 'No upload yet' }))
-
-            res.status(200).send(material)
+            res.status(200).send({materials, found})
         } catch (err) {
             console.log(err)
         } finally {
@@ -123,8 +150,6 @@ exports.listMaterials = async (req, res, next) => {
 
     // if self is false
 
-    // default page size is 12
-    const size = 12
     let containsOrSearch = exact === 'true' ? 'search' : 'contains'
     try {
         let materials = await prisma.material.findMany({
@@ -168,9 +193,8 @@ exports.listMaterials = async (req, res, next) => {
             },
             where: {
                 // only select the approved ones
-
                 NOT: {
-                    approver_id: null
+                    approver_id: null,
                 },
                 // set up queries
                 ...(query !== undefined && {
@@ -220,10 +244,7 @@ exports.listMaterials = async (req, res, next) => {
                     ],
                 }),
                 ...(uploadedBy !== undefined && {
-                    uploader: {
-                        ...(isNaN(uploadedBy) && { fullname: { [containsOrSearch]: uploadedBy, mode: 'insensitive' } }),
-                        ...(!isNaN(uploadedBy) && { ruet_id: Number(uploadedBy) })
-                    }
+                    uploader_id: Number(uploadedBy)
                 }),
                 ...(dept !== undefined && {
                     course: {
@@ -267,7 +288,11 @@ exports.listMaterials = async (req, res, next) => {
                     course: {
                         semester: sem === '1' ? 'ODD' : 'EVEN'
                     }
-                })
+                }),
+                /*
+                    if uploadedBy query is defined only select non anonymously uploaded materials
+                */
+                ...(uploadedBy && {is_uploaded_anonymously: false})
             },
             orderBy: [
                 { like_count: 'desc' },
@@ -367,8 +392,8 @@ exports.listMaterials = async (req, res, next) => {
                 }),
                 ...(uploadedBy !== undefined && {
                     uploader: {
-                        ...(isNaN(uploadedBy) && { fullname: { [containsOrSearch]: uploadedBy, mode: 'insensitive' } }),
-                        ...(!isNaN(uploadedBy) && { ruet_id: Number(uploadedBy) })
+                        // ...(isNaN(uploadedBy) && { fullname: { [containsOrSearch]: uploadedBy, mode: 'insensitive' } }),
+                        ...(!isNaN(uploadedBy) && { id: Number(uploadedBy) })
                     }
                 }),
                 ...(dept !== undefined && {
