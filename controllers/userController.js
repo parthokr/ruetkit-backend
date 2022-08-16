@@ -441,3 +441,32 @@ exports.removeFCMToken = async (req, res, next) => {
         return next(new RuetkitError())
     }
 }
+
+exports.getUser = async (req, res, next) => {
+    const {id:userId} = req.params
+    try {
+        let user = await prisma.user.findUnique({
+            select: {
+                ruet_id: true,
+                fullname: true,
+                email: true
+            },
+            where: {
+                id: Number(userId)
+            }
+        })
+        const count = await prisma.material.count({
+            where: {
+                uploader_id: Number(userId)
+            }
+        })
+        if (user === null) return next(new RuetkitError(404, {detail: 'User is not available'}))
+        user['materials_count'] = count
+        res.status(200).send(user)
+    } catch (err) {
+        console.log(err)
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }
+}
