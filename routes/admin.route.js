@@ -21,6 +21,7 @@ adminRoute.patch('/departments/:departmentId', [auth, requireStaffOrAdmin], depa
 adminRoute.get('/users', [auth, requireStaffOrAdmin], userAdminController.listUsers)
 adminRoute.patch('/users/:userId/upgrade', [auth, requireAdmin], userAdminController.upgradeUser)
 adminRoute.patch('/users/:userId/downgrade', [auth, requireAdmin], userAdminController.downgradeUser)
+adminRoute.patch('/users/:userId/delete', [auth, requireAdmin], userAdminController.deleteUser)
 
 adminRoute.patch('/users/:userId/restrict/toggle', [auth, requireStaffOrAdmin], userAdminController.toggleRestriction)
 module.exports = adminRoute
