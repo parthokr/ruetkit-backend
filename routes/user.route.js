@@ -45,5 +45,14 @@ userRoute.delete('/fcm', [auth], userController.removeFCMToken)
 // get a user
 userRoute.get('/:id', [auth], userController.getUser)
 
+// list materials of a user
+userRoute.get('/:id/materials', [auth], userController.listMaterials)
+
+// add avatar upload path
+userRoute.post('/avatar', [auth], userController.uploadAvatar)
+
+// delete avatar
+userRoute.delete('/avatar', [auth], userController.deleteAvatar)
+
 
 module.exports = userRoute
