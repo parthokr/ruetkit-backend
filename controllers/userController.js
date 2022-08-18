@@ -91,12 +91,15 @@ exports.signIn = async (req, res, next) => {
         const user = await prisma.user.findUnique({
             where: { ruet_id: ruetId },
             select: {
-                id: true,
-                fullname: true,
-                password: true,
-                is_verified: true,
-                status: true,
-                role: true
+                id: true, // to be sent in api response
+                fullname: true, // to be sent in api response
+                password: true, // to be compared
+                is_verified: true, // to be compared
+                status: true, // to be compared
+                role: true, // to be sent,
+                avatar: {
+                    select: {url: true} // to be sent
+                }
             }
         })
         if (user === null) {
@@ -113,7 +116,7 @@ exports.signIn = async (req, res, next) => {
             }
             const accessToken = await generateAccessToken({ id: user.id, fullname: user.fullname, role: user.role })
             const refreshToken = await generateRefreshToken({ id: user.id, fullname: user.fullname,role: user.role })
-            res.status(200).send({ accessToken, refreshToken, fullname: user.fullname, role: user.role })
+            res.status(200).send({ accessToken, refreshToken, id: user.id, fullname: user.fullname, role: user.role, avatar: user.avatar?.url })
         } else {
             return next(new RuetkitError(401, {field: 'password', detail: 'Invalid credentials provided'}))
         }
@@ -126,6 +129,7 @@ exports.signIn = async (req, res, next) => {
     }
 }
 
+// verify user's email when signing up by CODE
 exports.verify = async (req, res, next) => {
     const userId = Number(req.params.id)
     const { code } = req.body
@@ -174,6 +178,7 @@ exports.verify = async (req, res, next) => {
     }
 }
 
+
 exports.resendVerification = async (req, res, next) => {
     const userId = Number(req.params.id)
     if (isNaN(userId)) return next(new RuetkitError(400, { field: 'code', detail: 'Invalid user id provided' }))
@@ -220,8 +225,9 @@ exports.resendVerification = async (req, res, next) => {
     }
 }
 
+// verify existing JWT token
 exports.verifyToken = async (req, res, next) => {
-    res.status(200).send({fullname: req.user.fullname, role: req.user.role})
+    res.status(200).send({id: req.user.id, fullname: req.user.fullname, role: req.user.role, avatar: req.user.avatar?.url})
 }
 
 exports.refreshToken = async (req, res, next) => {
@@ -449,7 +455,13 @@ exports.getUser = async (req, res, next) => {
             select: {
                 ruet_id: true,
                 fullname: true,
-                email: true
+                email: true,
+                role: true,
+                avatar: {
+                    select: {
+                        url: true
+                    }
+                }
             },
             where: {
                 id: Number(userId)
@@ -463,6 +475,98 @@ exports.getUser = async (req, res, next) => {
         if (user === null) return next(new RuetkitError(404, {detail: 'User is not available'}))
         user['materials_count'] = count
         res.status(200).send(user)
+    } catch (err) {
+        console.log(err)
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }
+}
+
+exports.listMaterials = async (req, res, next) => {
+    const {id} = req.params
+    const {page=1} = req.query
+    if (isNaN(Number(id))) return next(new RuetkitError({detail: 'Invalid user id has been provided'}))
+
+    try {
+        const PAGE_SIZE = 10
+        let materials = await prisma.material.findMany({
+            select: {
+                id: true,
+                title: true,
+                course: {
+                    select: {code: true}
+                },
+                thumbnail_link: {
+                    select: {url: true}
+                },
+                material_link: {
+                    select: {drive_file_id: true}
+                }
+            },
+            where: {
+                // only select approved ones AND public materials if requested user is not owner
+                ...(Number(id) !== req.user.id && {
+                    NOT: {approver_id: null}, // select only approved ones
+                    is_uploaded_anonymously: false, // select only publicly uploaded materials
+                }),
+                uploader_id: Number(id)
+            },
+            take: PAGE_SIZE,
+            skip: Number(page - 1)*PAGE_SIZE
+        })
+        materials.forEach((material, index) => {
+            materials[index] = { no: (page-1)*PAGE_SIZE + index + 1, ...material}
+        })
+        const count = await prisma.material.count({
+            where: {
+                // only select approved ones AND public materials if requested user is not owner
+                ...(Number(id) !== req.user.id && {
+                    NOT: {approver_id: null}, // select only approved ones
+                    is_uploaded_anonymously: false, // select only publicly uploaded materials
+                }),
+                uploader_id: Number(id)
+            }
+        })
+        res.status(200).send({materials, found: count})
+    } catch (err) {
+        return next(new RuetkitError())
+    } finally {
+        prisma.$disconnect()
+    }
+}
+
+exports.uploadAvatar = async (req, res, next) => {
+    const {url} = req.body
+    if (url === null || url === undefined || url === "") return next(new RuetkitError(400, {detail: 'URL is required'}))
+    try {
+        const avatar = await prisma.avatar_Link.upsert({
+            select: {url: true},
+            where: {user_id: req.user.id},
+            update: {url},
+            create: {
+                url,
+                user: {connect: {id: req.user.id}}
+            }
+        })
+
+        res.status(200).send(avatar)
+
+    } catch(err) {
+        console.log(err)
+    } finally {
+        prisma.$disconnect()
+    }
+}
+
+exports.deleteAvatar = async (req, res, next) => {
+    try {
+        await prisma.avatar_Link.delete({
+            where: {
+                user_id: req.user.id
+            }
+        })
+        res.status(200).send({})
     } catch (err) {
         console.log(err)
         return next(new RuetkitError())

@@ -17,11 +17,14 @@ const auth = async (req, res, next) => {
             {
                 where: {id: userId},
                 select: {
-                    id: true,
-                    fullname: true,
-                    is_verified: true,
-                    status: true,
-                    role: true
+                    id: true, // to be set in request's user object
+                    fullname: true, // to be set in request's user object
+                    is_verified: true, // to be compared
+                    status: true, // to be set in request's user object
+                    role: true, // to be set in request's user object,
+                    avatar: {
+                        select: {url: true}
+                    }
                 }
             }
         )
