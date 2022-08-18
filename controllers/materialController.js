@@ -181,7 +181,7 @@ exports.listMaterials = async (req, res, next) => {
                     select: { url: true }
                 },
                 uploader: {
-                    select: { id: true, fullname: true, role: true }
+                    select: { id: true, fullname: true, role: true, avatar: {select: {url: true}} }
                 },
                 approver: {
                     select: {
